@@ -1,63 +1,42 @@
 package consultorio.modelo.profesionales;
 
-import javax.persistence.*;
-import java.util.List;
-import consultorio.modelo.Cita;
+import jakarta.persistence.*;
 
 @Entity
-@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
-@DiscriminatorColumn(name = "tipo_profesional", discriminatorType = DiscriminatorType.STRING)
-public abstract class ProfesionalSalud {
-
+@Table(name = "profesionales")
+@Inheritance(strategy = InheritanceType.JOINED)
+public class ProfesionalSalud {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Integer id;
 
     private String nombre;
     private String apellido;
-
-    @OneToMany(mappedBy = "profesional")
-    private List<Cita> citas;
+    private String especialidad;
+    private String correo;
 
     public ProfesionalSalud() {}
+
+    public ProfesionalSalud(String nombre, String apellido, String especialidad, String correo) {
+        this.nombre = nombre;
+        this.apellido = apellido;
+        this.especialidad = especialidad;
+        this.correo = correo;
+    }
 
     public ProfesionalSalud(String nombre, String apellido, String telefono, String correo, String area) {
     }
 
-    public Long getId() {
-        return id;
+    public ProfesionalSalud(String nombre, String licencia) {
     }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getNombre() {
-        return nombre;
-    }
-
-    public void setNombre(String nombre) {
-        this.nombre = nombre;
-    }
-
-    public String getApellido() {
-        return apellido;
-    }
-
-    public void setApellido(String apellido) {
-        this.apellido = apellido;
-    }
-
-    public List<Cita> getCitas() {
-        return citas;
-    }
-
-    public void setCitas(List<Cita> citas) {
-        this.citas = citas;
-    }
-
-    public ProfesionalSalud(String nombre, String apellido) {
-        this.nombre = nombre;
-        this.apellido = apellido;
-    }
+    public Integer getId() { return id; }
+    public String getNombre() { return nombre; }
+    public void setNombre(String nombre) { this.nombre = nombre; }
+    public String getApellido() { return apellido; }
+    public void setApellido(String apellido) { this.apellido = apellido; }
+    public String getEspecialidad() { return especialidad; }
+    public void setEspecialidad(String especialidad) { this.especialidad = especialidad; }
+    public String getCorreo() { return correo; }
+    public void setCorreo(String correo) { this.correo = correo; }
 }

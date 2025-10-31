@@ -1,22 +1,52 @@
 package consultorio.persistencia;
 
+
 import consultorio.modelo.Paciente;
-import javax.persistence.NoResultException;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Persistence;
 
-public class PacienteDAO extends GenericDAO<Paciente, Number> {
+import java.util.List;
 
-    public PacienteDAO() {
-        super(Paciente.class);
+public class PacienteDAO {
+    private EntityManagerFactory emf = Persistence.createEntityManagerFactory("consultorioPU");
+
+    public void crear(Paciente p) {
+        EntityManager em = emf.createEntityManager();
+        em.getTransaction().begin();
+        em.persist(p);
+        em.getTransaction().commit();
+        em.close();
     }
 
-    public Paciente buscarPorDocumento(String documento) {
-        try {
+    public List<Paciente> buscarTodos() {
+        EntityManager em = emf.createEntityManager();
+        List<Paciente> lista = em.createQuery("SELECT p FROM Paciente p", Paciente.class).getResultList();
+        em.close();
+        return lista;
+    }
 
-            return em.createQuery("SELECT p FROM Paciente p WHERE p.documentoIdentidad = :doc", Paciente.class)
-                    .setParameter("doc", documento)
-                    .getSingleResult();
-        } catch (NoResultException e) {
-            return null;
-        }
+    public Paciente buscarPorId(Long id) {
+        EntityManager em = emf.createEntityManager();
+        Paciente p = em.find(Paciente.class, id);
+        em.close();
+        return p;
+    }
+
+    public void actualizar(Paciente p) {
+        EntityManager em = emf.createEntityManager();
+        em.getTransaction().begin();
+        em.merge(p);
+        em.getTransaction().commit();
+        em.close();
+    }
+
+    public void eliminar(Long id) {
+        EntityManager em = emf.createEntityManager();
+        em.getTransaction().begin();
+        Paciente p = em.find(Paciente.class, id);
+        if (p != null) em.remove(p);
+        em.getTransaction().commit();
+        em.close();
     }
 }

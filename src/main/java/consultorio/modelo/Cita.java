@@ -1,20 +1,15 @@
 package consultorio.modelo;
 
-import consultorio.modelo.profesionales.Medico;
 import consultorio.modelo.profesionales.ProfesionalSalud;
-
-import javax.persistence.*;
-import java.time.LocalDateTime;
+import jakarta.persistence.*;
+import java.time.LocalDate;
 
 @Entity
+@Table(name = "citas")
 public class Cita {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    private String fecha;
-    private String hora;
+    private Integer id;
 
     @ManyToOne
     private Paciente paciente;
@@ -23,66 +18,31 @@ public class Cita {
     private ProfesionalSalud profesional;
 
     @ManyToOne
+    @JoinColumn(name = "consultorio_id")
     private Consultorio consultorio;
+
+
+    private LocalDate fecha;
+
+    private String motivo;
 
     public Cita() {}
 
-    public Cita(String fecha, String hora, Paciente paciente, ProfesionalSalud profesional, Consultorio consultorio) {
-        this.fecha = fecha;
-        this.hora = hora;
+    public Cita(Paciente paciente, ProfesionalSalud profesional, LocalDate fecha, String motivo) {
         this.paciente = paciente;
         this.profesional = profesional;
-        this.consultorio = consultorio;
-    }
-
-    public Cita(LocalDateTime localDateTime, String chequeoGeneral, Paciente paciente1, Medico medico1, Consultorio consultorio1) {
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getFecha() {
-        return fecha;
-    }
-
-    public void setFecha(String fecha) {
         this.fecha = fecha;
+        this.motivo = motivo;
     }
 
-    public String getHora() {
-        return hora;
-    }
-
-    public void setHora(String hora) {
-        this.hora = hora;
-    }
-
-    public Paciente getPaciente() {
-        return paciente;
-    }
-
-    public void setPaciente(Paciente paciente) {
-        this.paciente = paciente;
-    }
-
-    public ProfesionalSalud getProfesional() {
-        return profesional;
-    }
-
-    public void setProfesional(ProfesionalSalud profesional) {
-        this.profesional = profesional;
-    }
-
-    public Consultorio getConsultorio() {
-        return consultorio;
-    }
-
-    public void setConsultorio(Consultorio consultorio) {
-        this.consultorio = consultorio;
-    }
+    // getters y setters
+    public Integer getId() { return id; }
+    public Paciente getPaciente() { return paciente; }
+    public void setPaciente(Paciente paciente) { this.paciente = paciente; }
+    public ProfesionalSalud getProfesional() { return profesional; }
+    public void setProfesional(ProfesionalSalud profesional) { this.profesional = profesional; }
+    public LocalDate getFecha() { return fecha; }
+    public void setFecha(LocalDate fecha) { this.fecha = fecha; }
+    public String getMotivo() { return motivo; }
+    public void setMotivo(String motivo) { this.motivo = motivo; }
 }

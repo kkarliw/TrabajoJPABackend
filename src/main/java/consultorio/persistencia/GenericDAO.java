@@ -1,68 +1,56 @@
 package consultorio.persistencia;
 
-import javax.persistence.EntityManager;
-import javax.persistence.EntityTransaction;
+import jakarta.persistence.EntityManager;
 import java.util.List;
 
-public class GenericDAO<T, N> {
-    private final Class<T> entityClass;
+public abstract class GenericDAO<T, N> {
     protected EntityManager em;
+    private Class<T> entityClass;
 
     public GenericDAO(Class<T> entityClass) {
+        this.em = JPAUtils.getEntityManager();
         this.entityClass = entityClass;
-        this.em = JPAUtils.getEntityManagerFactory().createEntityManager();
     }
 
-    public void guardar(T entidad) {
-        EntityTransaction tx = em.getTransaction();
+    public void crear(T entidad) {
         try {
-            tx.begin();
+            em.getTransaction().begin();
             em.persist(entidad);
-            tx.commit();
-        } catch (RuntimeException e) {
-            if (tx.isActive()) {
-                tx.rollback();
-            }
+            em.getTransaction().commit();
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
             throw e;
         }
     }
 
-    public T buscarPorId(Object id) {
+    public T buscarPorId(Long id) {
         return em.find(entityClass, id);
     }
 
+    public List<T> buscarTodos() {
+        return em.createQuery("SELECT e FROM " + entityClass.getSimpleName() + " e", entityClass).getResultList();
+    }
+
     public void actualizar(T entidad) {
-        EntityTransaction tx = em.getTransaction();
         try {
-            tx.begin();
+            em.getTransaction().begin();
             em.merge(entidad);
-            tx.commit();
-        } catch (RuntimeException e) {
-            if (tx.isActive()) {
-                tx.rollback();
-            }
+            em.getTransaction().commit();
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
             throw e;
         }
     }
 
-    public void eliminar(Object id) {
-        T entidad = buscarPorId(id);
-        if (entidad != null) {
-            EntityTransaction tx = em.getTransaction();
-            try {
-                tx.begin();
-                em.remove(entidad);
-                tx.commit();
-            } catch (RuntimeException e) {
-                if (tx.isActive()) {
-                    tx.rollback();
-                }
-                throw e;
-            }
+    public void eliminar(Long id) {
+        try {
+            em.getTransaction().begin();
+            T e = em.find(entityClass, id);
+            if (e != null) em.remove(e);
+            em.getTransaction().commit();
+        } catch (Exception ex) {
+            if (em.getTransaction().isActive()) em.getTransaction().rollback();
+            throw ex;
         }
-    }
-
-    public List<T> buscarTodos() {
-        return em.createQuery("FROM " + entityClass.getName(), entityClass).getResultList();
     }
 }

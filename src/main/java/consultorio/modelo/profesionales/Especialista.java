@@ -1,19 +1,17 @@
 package consultorio.modelo.profesionales;
 
-
-import jakarta.persistence.DiscriminatorValue;
-import jakarta.persistence.Entity;
+import jakarta.persistence.*;
 
 @Entity
-@DiscriminatorValue("ESPECIALISTA")
+@Table(name = "especialista")
 public class Especialista extends ProfesionalSalud {
 
     private String campo;
 
     public Especialista() {}
 
-    public Especialista(String nombre, String apellido, String telefono, String correo, String area, String campo) {
-        super(nombre, apellido, telefono, correo, area);
+    public Especialista(String nombre, String apellido, String especialidad, String email, String telefono, String numeroLicencia, String campo) {
+        super(nombre, apellido, especialidad, email, telefono, numeroLicencia);
         this.campo = campo;
     }
 

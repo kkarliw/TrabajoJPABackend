@@ -49,4 +49,5 @@ public class PacienteDAO {
         em.getTransaction().commit();
         em.close();
     }
+    public List<Paciente> listarTodos() { return buscarTodos(); }
 }

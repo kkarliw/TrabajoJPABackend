@@ -2,22 +2,50 @@ package consultorio.persistencia;
 
 import consultorio.modelo.profesionales.ProfesionalSalud;
 import jakarta.persistence.EntityManager;
-
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Persistence;
 import java.util.List;
 
-public class ProfesionalSaludDAO<N> extends GenericDAO<ProfesionalSalud, N> {
+public class ProfesionalSaludDAO {
 
-    public ProfesionalSaludDAO() {
-        super(ProfesionalSalud.class);
+    private EntityManagerFactory emf = Persistence.createEntityManagerFactory("consultorioPU");
+
+    public void crear(ProfesionalSalud profesional) {
+        EntityManager em = emf.createEntityManager();
+        em.getTransaction().begin();
+        em.persist(profesional);
+        em.getTransaction().commit();
+        em.close();
     }
 
-    public List<ProfesionalSalud> buscarPorApellido(String apellido) {
-        EntityManager em = null;
-        return em.createQuery("SELECT p FROM ProfesionalSalud p WHERE p.apellido = :apellido", ProfesionalSalud.class)
-                 .setParameter("apellido", apellido)
-                 .getResultList();
+    public List<ProfesionalSalud> buscarTodos() {
+        EntityManager em = emf.createEntityManager();
+        List<ProfesionalSalud> lista = em.createQuery("SELECT p FROM ProfesionalSalud p", ProfesionalSalud.class).getResultList();
+        em.close();
+        return lista;
     }
 
-    public void crear(ProfesionalSalud prof) {
+    public ProfesionalSalud buscarPorId(Long id) {
+        EntityManager em = emf.createEntityManager();
+        ProfesionalSalud p = em.find(ProfesionalSalud.class, id);
+        em.close();
+        return p;
+    }
+
+    public void actualizar(ProfesionalSalud profesional) {
+        EntityManager em = emf.createEntityManager();
+        em.getTransaction().begin();
+        em.merge(profesional);
+        em.getTransaction().commit();
+        em.close();
+    }
+
+    public void eliminar(Long id) {
+        EntityManager em = emf.createEntityManager();
+        em.getTransaction().begin();
+        ProfesionalSalud p = em.find(ProfesionalSalud.class, id);
+        if (p != null) em.remove(p);
+        em.getTransaction().commit();
+        em.close();
     }
 }

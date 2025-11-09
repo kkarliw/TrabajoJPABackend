@@ -52,7 +52,17 @@ public class CitaDAO {
     public List<Cita> listarTodos() {
         return buscarTodos();
     }
-
+    public List<Cita> buscarPorMedico(Long medicoId) {
+        EntityManager em = emf.createEntityManager();
+        try {
+            return em.createQuery(
+                    "SELECT c FROM Cita c WHERE c.profesional.id = :medicoId",
+                    Cita.class
+            ).setParameter("medicoId", medicoId).getResultList();
+        } finally {
+            em.close();
+        }
+    }
     public List<Cita> buscarPorPaciente(long pacienteId) {
         EntityManager em = emf.createEntityManager();
         List<Cita> citas = null;

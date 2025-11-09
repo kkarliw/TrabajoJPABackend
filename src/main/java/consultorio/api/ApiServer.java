@@ -1,5 +1,8 @@
 package consultorio.api;
 
+import consultorio.api.controller.EstadisticasController;
+import consultorio.api.controller.NotificacionController;
+import consultorio.api.controller.ProfesionalSaludController;
 import consultorio.api.dto.LoginRequest;
 import consultorio.api.dto.RegistroRequest;
 import io.jsonwebtoken.Claims;
@@ -45,6 +48,10 @@ public class ApiServer {
         IncapacidadDAO incapacidadDAO = new IncapacidadDAO();
         CuidadorDAO cuidadorDAO = new CuidadorDAO();
 
+        NotificacionController.registerRoutes(gson);
+        EstadisticasController.registerRoutes(gson);
+        ProfesionalSaludController.registerRoutes(gson);
+
         // ---------------- FILTRO JWT ----------------
         before("/api/*", (req, res) -> {
             String path = req.pathInfo();
@@ -60,34 +67,72 @@ public class ApiServer {
 
         // ---------------- REGISTER / LOGIN ----------------
         post("/api/auth/register", (req, res) -> {
-            RegistroRequest r = gson.fromJson(req.body(), RegistroRequest.class);
+            res.type("application/json"); // ✅ Forzar JSON aquí
 
+            RegistroRequest r;
+            try {
+                r = gson.fromJson(req.body(), RegistroRequest.class);
+            } catch (Exception e) {
+                res.status(400);
+                return "{\"error\":\"JSON inválido: " + e.getMessage() + "\"}";
+            }
+
+            // Validaciones
             if (r.getEmail() == null || r.getPassword() == null || r.getNombre() == null) {
                 res.status(400);
-                return "{\"error\":\"Faltan campos (nombre, correo, password)\"}";
+                return "{\"error\":\"Faltan campos obligatorios (nombre, email, password)\"}";
             }
 
             String emailNormalized = r.getEmail().toLowerCase().trim();
+
+            // Verificar si ya existe
             if (usuarioDAO.buscarPorEmail(emailNormalized) != null) {
                 res.status(409);
-                return "{\"error\":\"Correo ya registrado\"}";
+                return "{\"error\":\"El correo ya está registrado\"}";
             }
 
+            // Hashear contraseña
             String hash = BCrypt.hashpw(r.getPassword(), BCrypt.gensalt());
 
-            String rol = (r.getRol() != null && !r.getRol().isEmpty()) ? r.getRol().toUpperCase() : "PACIENTE";
-            if (!rol.matches("ADMIN|PACIENTE|MEDICO|CUIDADOR")) rol = "PACIENTE";
+            // Asignar rol (default: PACIENTE)
+            String rol = (r.getRol() != null && !r.getRol().isEmpty())
+                    ? r.getRol().toUpperCase()
+                    : "PACIENTE";
 
+            if (!rol.matches("ADMIN|PACIENTE|MEDICO|CUIDADOR")) {
+                rol = "PACIENTE";
+            }
+
+            // Crear usuario
             Usuario u = new Usuario(emailNormalized, r.getNombre(), hash, rol);
-            usuarioDAO.crear(u);
 
-            res.status(201);
-            res.type("application/json");
-            return gson.toJson(u);
+            try {
+                usuarioDAO.crear(u);
+                res.status(201);
+
+                // ✅ No devolver el hash en la respuesta
+                return gson.toJson(java.util.Map.of(
+                        "id", u.getId(),
+                        "email", u.getEmail(),
+                        "nombre", u.getNombre(),
+                        "rol", u.getRol()
+                ));
+            } catch (Exception e) {
+                res.status(500);
+                return "{\"error\":\"Error al crear usuario: " + e.getMessage() + "\"}";
+            }
         });
 
         post("/api/auth/login", (req, res) -> {
-            LoginRequest lr = gson.fromJson(req.body(), LoginRequest.class);
+            res.type("application/json"); // ✅ Forzar JSON
+
+            LoginRequest lr;
+            try {
+                lr = gson.fromJson(req.body(), LoginRequest.class);
+            } catch (Exception e) {
+                res.status(400);
+                return "{\"error\":\"JSON inválido\"}";
+            }
 
             if (lr.getEmail() == null || lr.getPassword() == null) {
                 res.status(400);
@@ -97,16 +142,19 @@ public class ApiServer {
             Usuario u = usuarioDAO.buscarPorEmail(lr.getEmail().toLowerCase().trim());
             if (u == null || !BCrypt.checkpw(lr.getPassword(), u.getPasswordHash())) {
                 res.status(401);
-                return "{\"error\":\"Error al iniciar sesión. Verifica tus credenciales.\"}";
+                return "{\"error\":\"Credenciales incorrectas\"}";
             }
 
             String token = JwtUtils.generateToken(u.getId(), u.getRol());
             res.status(200);
-            res.type("application/json");
+
+            // ✅ CORRECCIÓN: Devolver objeto user completo
             return gson.toJson(java.util.Map.of(
                     "token", token,
                     "rol", u.getRol(),
-                    "nombre", u.getNombre()
+                    "nombre", u.getNombre(),
+                    "id", u.getId(),
+                    "email", u.getEmail()
             ));
         });
 
@@ -228,71 +276,131 @@ public class ApiServer {
             return "";
         });
 
-        // ---------------- CITAS ----------------
         post("/api/citas", (req, res) -> {
-            CitaInput input = gson.fromJson(req.body(), CitaInput.class);
+            res.type("application/json");
 
-            if (input.fecha == null || input.fecha.trim().isEmpty()) {
+            CitaInput input;
+            try {
+                input = gson.fromJson(req.body(), CitaInput.class);
+            } catch (Exception e) {
                 res.status(400);
-                return gson.toJson("{\"error\": \"El campo 'fecha' es obligatorio.\"}");
+                return "{\"error\": \"JSON inválido: " + e.getMessage() + "\"}";
             }
 
+            // Validaciones
+            if (input.fecha == null || input.fecha.trim().isEmpty()) {
+                res.status(400);
+                return "{\"error\": \"El campo 'fecha' es obligatorio.\"}";
+            }
+
+            if (input.pacienteId == null || input.profesionalId == null) {
+                res.status(400);
+                return "{\"error\": \"Debe especificar paciente y profesional.\"}";
+            }
+
+            // Buscar entidades
             Paciente p = pacienteDAO.buscarPorId(input.pacienteId);
             ProfesionalSalud prof = (ProfesionalSalud) profDAO.buscarPorId(input.profesionalId);
 
             if (p == null || prof == null) {
                 res.status(400);
-                return gson.toJson("{\"error\": \"Paciente o profesional no existe.\"}");
+                return "{\"error\": \"Paciente o profesional no existe.\"}";
             }
 
+            // Parsear fecha
             LocalDate fecha;
             try {
                 fecha = LocalDate.parse(input.fecha);
             } catch (DateTimeParseException e) {
                 res.status(400);
-                return gson.toJson("{\"error\": \"Formato de fecha inválido. Se esperaba YYYY-MM-DD.\"}");
+                return "{\"error\": \"Formato de fecha inválido. Use YYYY-MM-DD.\"}";
             }
 
+            // ✅ Crear cita usando el constructor correcto
             Cita c = new Cita(p, prof, fecha, input.motivo);
-            citaDAO.crear(c);
 
-            res.status(201);
-            res.type("application/json");
-            return gson.toJson(c);
+            try {
+                citaDAO.crear(c);
+                res.status(201);
+                return gson.toJson(c);
+            } catch (Exception e) {
+                res.status(500);
+                return "{\"error\": \"Error al crear la cita: " + e.getMessage() + "\"}";
+            }
         });
 
         get("/api/citas", (req, res) -> {
-            List<Cita> list = citaDAO.buscarTodos();
             res.type("application/json");
+            List<Cita> list = citaDAO.buscarTodos();
             return gson.toJson(list);
         });
 
         get("/api/citas/:id", (req, res) -> {
+            res.type("application/json");
             Long id = Long.parseLong(req.params(":id"));
             Cita c = citaDAO.buscarPorId(id);
             if (c == null) {
                 res.status(404);
-                return "{}";
+                return "{\"error\":\"Cita no encontrada\"}";
             }
-            res.type("application/json");
             return gson.toJson(c);
         });
 
-        put("/api/citas/:id", (req, res) -> {
-            Long id = Long.parseLong(req.params(":id"));
-            Cita c = gson.fromJson(req.body(), Cita.class);
-            c.setId(Math.toIntExact(id));
-            citaDAO.actualizar(c);
-            res.status(200);
+// ✅ NUEVO: Endpoint para buscar citas por paciente
+        get("/api/citas/paciente/:pacienteId", (req, res) -> {
             res.type("application/json");
-            return gson.toJson(c);
+            Long pacienteId = Long.parseLong(req.params(":pacienteId"));
+            List<Cita> citas = citaDAO.buscarPorPaciente(pacienteId);
+            return gson.toJson(citas);
+        });
+
+        put("/api/citas/:id", (req, res) -> {
+            res.type("application/json");
+            Long id = Long.parseLong(req.params(":id"));
+
+            Cita citaExistente = citaDAO.buscarPorId(id);
+            if (citaExistente == null) {
+                res.status(404);
+                return "{\"error\":\"Cita no encontrada\"}";
+            }
+
+            try {
+                CitaInput input = gson.fromJson(req.body(), CitaInput.class);
+
+                // Actualizar campos si vienen en el request
+                if (input.fecha != null && !input.fecha.isEmpty()) {
+                    citaExistente.setFecha(LocalDate.parse(input.fecha));
+                }
+                if (input.motivo != null) {
+                    citaExistente.setMotivo(input.motivo);
+                }
+
+                citaDAO.actualizar(citaExistente);
+                res.status(200);
+                return gson.toJson(citaExistente);
+            } catch (Exception e) {
+                res.status(500);
+                return "{\"error\": \"Error al actualizar cita: " + e.getMessage() + "\"}";
+            }
         });
 
         delete("/api/citas/:id", (req, res) -> {
             Long id = Long.parseLong(req.params(":id"));
-            citaDAO.eliminar(id);
-            res.status(204);
-            return "";
+
+            Cita c = citaDAO.buscarPorId(id);
+            if (c == null) {
+                res.status(404);
+                return "{\"error\":\"Cita no encontrada\"}";
+            }
+
+            try {
+                citaDAO.eliminar(id);
+                res.status(204);
+                return "";
+            } catch (Exception e) {
+                res.status(500);
+                return "{\"error\": \"Error al eliminar cita: " + e.getMessage() + "\"}";
+            }
         });
 
         // ---------------- HISTORIAS CLÍNICAS ----------------
@@ -375,21 +483,35 @@ public class ApiServer {
     }
 
     private static void enableCORS() {
+        // 1️⃣ Manejar peticiones OPTIONS primero (preflight)
         options("/*", (request, response) -> {
             String headers = request.headers("Access-Control-Request-Headers");
-            if (headers != null) response.header("Access-Control-Allow-Headers", headers);
-
+            if (headers != null) {
+                response.header("Access-Control-Allow-Headers", headers);
+            }
             String methods = request.headers("Access-Control-Request-Method");
-            if (methods != null) response.header("Access-Control-Allow-Methods", methods);
-
+            if (methods != null) {
+                response.header("Access-Control-Allow-Methods", methods);
+            }
             return "OK";
         });
 
+        // 2️⃣ Aplicar headers CORS ANTES de otros filtros
         before((request, response) -> {
             response.header("Access-Control-Allow-Origin", "*");
             response.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
             response.header("Access-Control-Allow-Headers", "Content-Type,Authorization");
-            response.type("application/json");
+
+            // ⚠️ NO forzar application/json aquí - déjalo para cada endpoint
+            // response.type("application/json"); // ❌ ELIMINAR ESTA LÍNEA
+        });
+
+        // 3️⃣ Añadir Content-Type solo en endpoints específicos
+        after((request, response) -> {
+            if (!response.raw().containsHeader("Content-Type") &&
+                    !request.requestMethod().equals("OPTIONS")) {
+                response.type("application/json");
+            }
         });
     }
 }

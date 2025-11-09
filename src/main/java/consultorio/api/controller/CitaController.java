@@ -14,11 +14,10 @@ public class CitaController {
         path("/api/citas", () -> {
             get("", (req, res) -> gson.toJson(citaDAO.listarTodos()));
 
-            get("/:id", (req, res) -> {
-                Integer id = Integer.valueOf(req.params(":id"));
-                Cita c = citaDAO.buscarPorId(id.longValue());
-                if (c == null) { res.status(404); return gson.toJson("{\"error\":\"Cita no encontrada\"}"); }
-                return gson.toJson(c);
+            get("/medico/:medicoId", (req, res) -> {
+                Long medicoId = Long.parseLong(req.params(":medicoId"));
+                res.type("application/json");
+                return gson.toJson(citaDAO.buscarPorMedico(medicoId));
             });
 
             post("", (req, res) -> {
@@ -38,13 +37,11 @@ public class CitaController {
             });
 
             put("/:id", (req, res) -> {
-                Integer id = Integer.valueOf(req.params(":id"));
-                Cita c = citaDAO.buscarPorId(id.longValue());
-                if (c == null) { res.status(404); return gson.toJson("{\"error\":\"No existe\"}"); }
-                CitaInput input = gson.fromJson(req.body(), CitaInput.class);
-                // actualizar campos (según tu Cita.java)
-                // c.setFechaHora(input.getFechaHora()); etc.
+                Long id = Long.parseLong(req.params(":id"));
+                Cita c = gson.fromJson(req.body(), Cita.class);
+                c.setId(Math.toIntExact(id));
                 citaDAO.actualizar(c);
+                res.type("application/json");
                 return gson.toJson(c);
             });
 

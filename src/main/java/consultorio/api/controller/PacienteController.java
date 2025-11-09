@@ -34,17 +34,23 @@ public class PacienteController {
             });
 
             put("/:id", (req, res) -> {
-                Integer id = Integer.valueOf(req.params(":id"));
-                Paciente existente = pacienteDAO.buscarPorId(id.longValue());
-                if (existente == null) { res.status(404); return gson.toJson("{\"error\":\"No existe\"}"); }
+                Long id = Long.parseLong(req.params(":id"));
+                Paciente p = pacienteDAO.buscarPorId(id);
+                if (p == null) {
+                    res.status(404);
+                    return gson.toJson("{\"error\":\"Paciente no encontrado\"}");
+                }
                 Paciente actualizado = gson.fromJson(req.body(), Paciente.class);
-                // actualiza campos
-                existente.setNombre(actualizado.getNombre());
-                existente.setNombre(actualizado.getEmail());
-                existente.setTelefono(actualizado.getTelefono());
-                existente.setDireccion(actualizado.getDireccion());
-                pacienteDAO.actualizar(existente);
-                return gson.toJson(existente);
+                p.setNombre(actualizado.getNombre());
+                p.setApellido(actualizado.getApellido());
+                p.setEmail(actualizado.getEmail());
+                p.setTelefono(actualizado.getTelefono());
+                p.setDireccion(actualizado.getDireccion());
+                p.setFechaNacimiento(actualizado.getFechaNacimiento());
+                p.setGenero(actualizado.getGenero());
+                pacienteDAO.actualizar(p);
+                res.type("application/json");
+                return gson.toJson(p);
             });
 
             delete("/:id", (req, res) -> {

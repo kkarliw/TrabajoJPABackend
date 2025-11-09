@@ -50,4 +50,19 @@ public class NotificacionDAO {
             em.close();
         }
     }
+
+    // ✅ NUEVO MÉTODO
+    public List<Notificacion> buscarNoLeidas(Long usuarioId) {
+        EntityManager em = emf.createEntityManager();
+        try {
+            return em.createQuery(
+                            "SELECT n FROM Notificacion n WHERE n.destinatario.id = :usuarioId AND n.leida = false ORDER BY n.createdAt DESC",
+                            Notificacion.class
+                    )
+                    .setParameter("usuarioId", usuarioId)
+                    .getResultList();
+        } finally {
+            em.close();
+        }
+    }
 }

@@ -1,3 +1,4 @@
+
 package consultorio.persistencia;
 
 import consultorio.modelo.Usuario;
@@ -24,6 +25,7 @@ public class UsuarioDAO {
             em.close();
         }
     }
+
     public Usuario buscarPorEmail(String email) {
         EntityManager em = JPAUtils.getEntityManager();
         try {
@@ -36,6 +38,7 @@ public class UsuarioDAO {
             em.close();
         }
     }
+
     public Usuario validarUsuario(String correo, String password) {
         EntityManager em = emf.createEntityManager();
         try {
@@ -48,12 +51,28 @@ public class UsuarioDAO {
             em.close();
         }
     }
-    
+
     public Usuario buscarPorId(Long id) {
         EntityManager em = emf.createEntityManager();
         Usuario u = em.find(Usuario.class, id);
         em.close();
         return u;
+    }
+
+    // ✅ NUEVO MÉTODO
+    public void actualizar(Usuario u) {
+        EntityManager em = JPAUtils.getEntityManager();
+        EntityTransaction tx = em.getTransaction();
+        try {
+            tx.begin();
+            em.merge(u);
+            tx.commit();
+        } catch (Exception e) {
+            if (tx.isActive()) tx.rollback();
+            throw e;
+        } finally {
+            em.close();
+        }
     }
 
     public void guardarUsuario(Usuario nuevoUsuario) {

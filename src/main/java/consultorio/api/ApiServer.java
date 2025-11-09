@@ -1,3 +1,4 @@
+
 package consultorio.api;
 
 import consultorio.api.controller.EstadisticasController;
@@ -20,6 +21,7 @@ import static spark.Spark.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.List;
+import java.util.Map;
 
 public class ApiServer {
 
@@ -47,6 +49,7 @@ public class ApiServer {
         HistoriaClinicaDAO historiaDAO = new HistoriaClinicaDAO();
         IncapacidadDAO incapacidadDAO = new IncapacidadDAO();
         CuidadorDAO cuidadorDAO = new CuidadorDAO();
+        NotificacionDAO notificacionDAO = new NotificacionDAO();
 
         NotificacionController.registerRoutes(gson);
         EstadisticasController.registerRoutes(gson);
@@ -66,10 +69,10 @@ public class ApiServer {
         });
 
         // ---------------- REGISTER / LOGIN ----------------
-        post("/api/auth/register", (req, res) -> {
-            res.type("application/json"); // ✅ Forzar JSON aquí
 
-            RegistroRequest r;
+        post("/api/auth/register", (req, res) -> {
+            RegistroRequest r = gson.fromJson(req.body(), RegistroRequest.class);
+
             try {
                 r = gson.fromJson(req.body(), RegistroRequest.class);
             } catch (Exception e) {
@@ -77,7 +80,6 @@ public class ApiServer {
                 return "{\"error\":\"JSON inválido: " + e.getMessage() + "\"}";
             }
 
-            // Validaciones
             if (r.getEmail() == null || r.getPassword() == null || r.getNombre() == null) {
                 res.status(400);
                 return "{\"error\":\"Faltan campos obligatorios (nombre, email, password)\"}";
@@ -85,32 +87,32 @@ public class ApiServer {
 
             String emailNormalized = r.getEmail().toLowerCase().trim();
 
-            // Verificar si ya existe
             if (usuarioDAO.buscarPorEmail(emailNormalized) != null) {
                 res.status(409);
                 return "{\"error\":\"El correo ya está registrado\"}";
             }
 
-            // Hashear contraseña
             String hash = BCrypt.hashpw(r.getPassword(), BCrypt.gensalt());
 
-            // Asignar rol (default: PACIENTE)
-            String rol = (r.getRol() != null && !r.getRol().isEmpty())
-                    ? r.getRol().toUpperCase()
-                    : "PACIENTE";
+            String rol = "PACIENTE";
+            if (r.getRol() != null && !r.getRol().isEmpty()) {
+                String rolUpper = r.getRol().toUpperCase();
+                if (rolUpper.matches("ADMIN|PACIENTE|MEDICO|RECEPCIONISTA|CUIDADOR")) {
+                    rol = rolUpper;
+                }
+            }
 
-            if (!rol.matches("ADMIN|PACIENTE|MEDICO|CUIDADOR")) {
+            if (!rol.matches("ADMIN|PACIENTE|MEDICO|CUIDADOR|RECEPCIONISTA")) {
                 rol = "PACIENTE";
             }
 
-            // Crear usuario
-            Usuario u = new Usuario(emailNormalized, r.getNombre(), hash, rol);
+            Usuario u = new Usuario(r.getEmail(), r.getNombre(), hash, rol);
+            usuarioDAO.crear(u);
 
             try {
                 usuarioDAO.crear(u);
                 res.status(201);
 
-                // ✅ No devolver el hash en la respuesta
                 return gson.toJson(java.util.Map.of(
                         "id", u.getId(),
                         "email", u.getEmail(),
@@ -124,7 +126,7 @@ public class ApiServer {
         });
 
         post("/api/auth/login", (req, res) -> {
-            res.type("application/json"); // ✅ Forzar JSON
+            res.type("application/json");
 
             LoginRequest lr;
             try {
@@ -148,13 +150,10 @@ public class ApiServer {
             String token = JwtUtils.generateToken(u.getId(), u.getRol());
             res.status(200);
 
-            // ✅ CORRECCIÓN: Devolver objeto user completo
-            return gson.toJson(java.util.Map.of(
-                    "token", token,
-                    "rol", u.getRol(),
-                    "nombre", u.getNombre(),
+            return gson.toJson(Map.of(
                     "id", u.getId(),
-                    "email", u.getEmail()
+                    "nombre", u.getNombre(),
+                    "rol", u.getRol()
             ));
         });
 
@@ -188,6 +187,41 @@ public class ApiServer {
             cuidadorDAO.eliminar(id);
             res.status(204);
             return "";
+        });
+
+        // ✅ BÚSQUEDA DE PACIENTES - NUEVO
+        get("/api/pacientes/buscar", (req, res) -> {
+            res.type("application/json");
+
+            String nombre = req.queryParams("nombre");
+            String documento = req.queryParams("documento");
+
+            if (nombre != null && !nombre.trim().isEmpty()) {
+                try {
+                    List<Paciente> resultados = pacienteDAO.buscarPorNombre(nombre);
+                    return gson.toJson(resultados);
+                } catch (Exception e) {
+                    res.status(500);
+                    return gson.toJson(java.util.Map.of("error", "Error en búsqueda: " + e.getMessage()));
+                }
+            }
+
+            if (documento != null && !documento.trim().isEmpty()) {
+                try {
+                    Paciente paciente = pacienteDAO.buscarPorDocumento(documento);
+                    if (paciente == null) {
+                        res.status(404);
+                        return gson.toJson(java.util.Map.of("error", "Paciente no encontrado"));
+                    }
+                    return gson.toJson(java.util.List.of(paciente));
+                } catch (Exception e) {
+                    res.status(500);
+                    return gson.toJson(java.util.Map.of("error", "Error: " + e.getMessage()));
+                }
+            }
+
+            res.status(400);
+            return gson.toJson(java.util.Map.of("error", "Debe proporcionar 'nombre' o 'documento'"));
         });
 
         // ---------------- PACIENTES ----------------
@@ -276,6 +310,37 @@ public class ApiServer {
             return "";
         });
 
+        // ✅ CITAS DEL DÍA - NUEVO
+        get("/api/citas/hoy", (req, res) -> {
+            res.type("application/json");
+            try {
+                LocalDate hoy = LocalDate.now();
+                List<Cita> citasHoy = citaDAO.buscarPorFecha(hoy);
+                return gson.toJson(citasHoy);
+            } catch (Exception e) {
+                res.status(500);
+                return gson.toJson(java.util.Map.of("error", "Error: " + e.getMessage()));
+            }
+        });
+
+        // ✅ CITAS PRÓXIMAS - NUEVO
+        get("/api/citas/proximas", (req, res) -> {
+            res.type("application/json");
+            try {
+                String diasParam = req.queryParams("dias");
+                int dias = (diasParam != null) ? Integer.parseInt(diasParam) : 7;
+
+                LocalDate inicio = LocalDate.now();
+                LocalDate fin = inicio.plusDays(dias);
+
+                List<Cita> proximas = citaDAO.buscarEnRango(inicio, fin);
+                return gson.toJson(proximas);
+            } catch (Exception e) {
+                res.status(500);
+                return gson.toJson(java.util.Map.of("error", "Error: " + e.getMessage()));
+            }
+        });
+
         post("/api/citas", (req, res) -> {
             res.type("application/json");
 
@@ -287,7 +352,6 @@ public class ApiServer {
                 return "{\"error\": \"JSON inválido: " + e.getMessage() + "\"}";
             }
 
-            // Validaciones
             if (input.fecha == null || input.fecha.trim().isEmpty()) {
                 res.status(400);
                 return "{\"error\": \"El campo 'fecha' es obligatorio.\"}";
@@ -298,7 +362,6 @@ public class ApiServer {
                 return "{\"error\": \"Debe especificar paciente y profesional.\"}";
             }
 
-            // Buscar entidades
             Paciente p = pacienteDAO.buscarPorId(input.pacienteId);
             ProfesionalSalud prof = (ProfesionalSalud) profDAO.buscarPorId(input.profesionalId);
 
@@ -307,7 +370,6 @@ public class ApiServer {
                 return "{\"error\": \"Paciente o profesional no existe.\"}";
             }
 
-            // Parsear fecha
             LocalDate fecha;
             try {
                 fecha = LocalDate.parse(input.fecha);
@@ -316,7 +378,6 @@ public class ApiServer {
                 return "{\"error\": \"Formato de fecha inválido. Use YYYY-MM-DD.\"}";
             }
 
-            // ✅ Crear cita usando el constructor correcto
             Cita c = new Cita(p, prof, fecha, input.motivo);
 
             try {
@@ -346,12 +407,59 @@ public class ApiServer {
             return gson.toJson(c);
         });
 
-// ✅ NUEVO: Endpoint para buscar citas por paciente
         get("/api/citas/paciente/:pacienteId", (req, res) -> {
             res.type("application/json");
             Long pacienteId = Long.parseLong(req.params(":pacienteId"));
             List<Cita> citas = citaDAO.buscarPorPaciente(pacienteId);
             return gson.toJson(citas);
+        });
+
+        // ✅ MARCAR LLEGADA DE PACIENTE - NUEVO
+        put("/api/citas/:id/marcar-llegada", (req, res) -> {
+            res.type("application/json");
+            try {
+                Long id = Long.parseLong(req.params(":id"));
+                Cita cita = citaDAO.buscarPorId(id);
+
+                if (cita == null) {
+                    res.status(404);
+                    return gson.toJson(java.util.Map.of("error", "Cita no encontrada"));
+                }
+
+                cita.setEstado(EstadoCita.CONFIRMADA);
+                citaDAO.actualizar(cita);
+
+                // Crear notificación al médico
+                if (cita.getProfesional() != null) {
+                    try {
+                        Usuario medico = usuarioDAO.buscarPorId((long) cita.getProfesional().getId());
+
+                        if (medico != null) {
+                            String mensaje = String.format(
+                                    "El paciente %s ha llegado a la cita",
+                                    cita.getPaciente().getNombre()
+                            );
+
+                            Notificacion notif = new Notificacion(
+                                    "Paciente llegó",
+                                    mensaje,
+                                    null,
+                                    medico,
+                                    TipoNotificacion.PACIENTE_LLEGO,
+                                    cita
+                            );
+                            notificacionDAO.crear(notif);
+                        }
+                    } catch (Exception ex) {
+                        System.out.println("No se pudo crear notificación: " + ex.getMessage());
+                    }
+                }
+
+                return gson.toJson(cita);
+            } catch (Exception e) {
+                res.status(500);
+                return gson.toJson(java.util.Map.of("error", "Error: " + e.getMessage()));
+            }
         });
 
         put("/api/citas/:id", (req, res) -> {
@@ -367,7 +475,6 @@ public class ApiServer {
             try {
                 CitaInput input = gson.fromJson(req.body(), CitaInput.class);
 
-                // Actualizar campos si vienen en el request
                 if (input.fecha != null && !input.fecha.isEmpty()) {
                     citaExistente.setFecha(LocalDate.parse(input.fecha));
                 }
@@ -400,6 +507,81 @@ public class ApiServer {
             } catch (Exception e) {
                 res.status(500);
                 return "{\"error\": \"Error al eliminar cita: " + e.getMessage() + "\"}";
+            }
+        });
+
+        // ✅ NOTIFICACIONES NO LEÍDAS - NUEVO
+        get("/api/notificaciones/:usuarioId/no-leidas", (req, res) -> {
+            res.type("application/json");
+            try {
+                Long usuarioId = Long.parseLong(req.params(":usuarioId"));
+                List<Notificacion> noLeidas = notificacionDAO.buscarNoLeidas(usuarioId);
+                return gson.toJson(noLeidas);
+            } catch (Exception e) {
+                res.status(500);
+                return gson.toJson(java.util.Map.of("error", "Error: " + e.getMessage()));
+            }
+        });
+
+        // ✅ OBTENER PERFIL DE USUARIO - NUEVO
+        get("/api/usuarios/:id", (req, res) -> {
+            res.type("application/json");
+            try {
+                Long id = Long.parseLong(req.params(":id"));
+                Usuario usuario = usuarioDAO.buscarPorId(id);
+
+                if (usuario == null) {
+                    res.status(404);
+                    return gson.toJson(java.util.Map.of("error", "Usuario no encontrado"));
+                }
+
+                return gson.toJson(java.util.Map.of(
+                        "id", usuario.getId(),
+                        "nombre", usuario.getNombre(),
+                        "apellido", usuario.getApellido(),
+                        "email", usuario.getEmail(),
+                        "rol", usuario.getRol()
+                ));
+            } catch (Exception e) {
+                res.status(500);
+                return gson.toJson(java.util.Map.of("error", "Error: " + e.getMessage()));
+            }
+        });
+
+        // ✅ ACTUALIZAR PERFIL DE USUARIO - NUEVO
+        put("/api/usuarios/:id", (req, res) -> {
+            res.type("application/json");
+            try {
+                Long id = Long.parseLong(req.params(":id"));
+                Usuario usuarioExistente = usuarioDAO.buscarPorId(id);
+
+                if (usuarioExistente == null) {
+                    res.status(404);
+                    return gson.toJson(java.util.Map.of("error", "Usuario no encontrado"));
+                }
+
+                java.util.Map<String, Object> datosActualizacion = gson.fromJson(req.body(), java.util.Map.class);
+
+                if (datosActualizacion.containsKey("nombre")) {
+                    usuarioExistente.setNombre((String) datosActualizacion.get("nombre"));
+                }
+                if (datosActualizacion.containsKey("apellido")) {
+                    usuarioExistente.setApellido((String) datosActualizacion.get("apellido"));
+                }
+
+                usuarioDAO.actualizar(usuarioExistente);
+
+                res.status(200);
+                return gson.toJson(java.util.Map.of(
+                        "id", usuarioExistente.getId(),
+                        "nombre", usuarioExistente.getNombre(),
+                        "apellido", usuarioExistente.getApellido(),
+                        "email", usuarioExistente.getEmail(),
+                        "rol", usuarioExistente.getRol()
+                ));
+            } catch (Exception e) {
+                res.status(500);
+                return gson.toJson(java.util.Map.of("error", "Error al actualizar: " + e.getMessage()));
             }
         });
 
@@ -483,7 +665,6 @@ public class ApiServer {
     }
 
     private static void enableCORS() {
-        // 1️⃣ Manejar peticiones OPTIONS primero (preflight)
         options("/*", (request, response) -> {
             String headers = request.headers("Access-Control-Request-Headers");
             if (headers != null) {
@@ -496,17 +677,12 @@ public class ApiServer {
             return "OK";
         });
 
-        // 2️⃣ Aplicar headers CORS ANTES de otros filtros
         before((request, response) -> {
             response.header("Access-Control-Allow-Origin", "*");
             response.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
             response.header("Access-Control-Allow-Headers", "Content-Type,Authorization");
-
-            // ⚠️ NO forzar application/json aquí - déjalo para cada endpoint
-            // response.type("application/json"); // ❌ ELIMINAR ESTA LÍNEA
         });
 
-        // 3️⃣ Añadir Content-Type solo en endpoints específicos
         after((request, response) -> {
             if (!response.raw().containsHeader("Content-Type") &&
                     !request.requestMethod().equals("OPTIONS")) {

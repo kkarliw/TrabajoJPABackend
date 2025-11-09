@@ -4,6 +4,7 @@
         <class>consultorio.modelo.Paciente</class>
         <class>consultorio.modelo.Cita</class>
         <class>consultorio.modelo.profesionales.ProfesionalSalud</class>
+        <class>consultorio.modelo.profesionales.ProfesionalSalud</class>
         <class>consultorio.modelo.Notificacion</class>
         <class>consultorio.modelo.TipoNotificacion</class>
         <properties>

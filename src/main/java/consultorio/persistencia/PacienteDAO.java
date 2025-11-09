@@ -1,11 +1,10 @@
-package consultorio.persistencia;
 
+package consultorio.persistencia;
 
 import consultorio.modelo.Paciente;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
-
 import java.util.List;
 
 public class PacienteDAO {
@@ -49,5 +48,39 @@ public class PacienteDAO {
         em.getTransaction().commit();
         em.close();
     }
-    public List<Paciente> listarTodos() { return buscarTodos(); }
+
+    public List<Paciente> listarTodos() {
+        return buscarTodos();
+    }
+
+    // ✅ NUEVOS MÉTODOS
+    public List<Paciente> buscarPorNombre(String nombre) {
+        EntityManager em = emf.createEntityManager();
+        try {
+            return em.createQuery(
+                            "SELECT p FROM Paciente p WHERE LOWER(p.nombre) LIKE LOWER(:nombre) OR LOWER(p.apellido) LIKE LOWER(:nombre)",
+                            Paciente.class
+                    )
+                    .setParameter("nombre", "%" + nombre + "%")
+                    .getResultList();
+        } finally {
+            em.close();
+        }
+    }
+
+    public Paciente buscarPorDocumento(String numeroDocumento) {
+        EntityManager em = emf.createEntityManager();
+        try {
+            return em.createQuery(
+                            "SELECT p FROM Paciente p WHERE p.numeroDocumento = :documento",
+                            Paciente.class
+                    )
+                    .setParameter("documento", numeroDocumento)
+                    .getResultStream()
+                    .findFirst()
+                    .orElse(null);
+        } finally {
+            em.close();
+        }
+    }
 }

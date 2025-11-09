@@ -4,6 +4,7 @@ import consultorio.modelo.Cita;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
+import java.time.LocalDate;
 import java.util.List;
 
 public class CitaDAO {
@@ -52,6 +53,7 @@ public class CitaDAO {
     public List<Cita> listarTodos() {
         return buscarTodos();
     }
+
     public List<Cita> buscarPorMedico(Long medicoId) {
         EntityManager em = emf.createEntityManager();
         try {
@@ -63,11 +65,11 @@ public class CitaDAO {
             em.close();
         }
     }
+
     public List<Cita> buscarPorPaciente(long pacienteId) {
         EntityManager em = emf.createEntityManager();
-        List<Cita> citas = null;
         try {
-            citas = em.createQuery(
+            return em.createQuery(
                             "SELECT c FROM Cita c WHERE c.paciente.id = :pacienteId",
                             Cita.class
                     )
@@ -76,7 +78,35 @@ public class CitaDAO {
         } finally {
             em.close();
         }
-        return citas;
     }
 
+    // ✅ NUEVOS MÉTODOS
+    public List<Cita> buscarPorFecha(LocalDate fecha) {
+        EntityManager em = emf.createEntityManager();
+        try {
+            return em.createQuery(
+                            "SELECT c FROM Cita c WHERE c.fecha = :fecha ORDER BY c.fecha ASC",
+                            Cita.class
+                    )
+                    .setParameter("fecha", fecha)
+                    .getResultList();
+        } finally {
+            em.close();
+        }
+    }
+
+    public List<Cita> buscarEnRango(LocalDate inicio, LocalDate fin) {
+        EntityManager em = emf.createEntityManager();
+        try {
+            return em.createQuery(
+                            "SELECT c FROM Cita c WHERE c.fecha BETWEEN :inicio AND :fin ORDER BY c.fecha ASC",
+                            Cita.class
+                    )
+                    .setParameter("inicio", inicio)
+                    .setParameter("fin", fin)
+                    .getResultList();
+        } finally {
+            em.close();
+        }
+    }
 }

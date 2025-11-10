@@ -28,6 +28,9 @@ public class ProfesionalSalud {
         this.numeroLicencia = numeroLicencia;
     }
 
+    public ProfesionalSalud(String nombre, Object nombre1, String general, String emailNormalized, Object especialidad, Object email) {
+    }
+
     public Integer getId() {
         return id;
     }

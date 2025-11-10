@@ -17,7 +17,7 @@ public class ProfesionalSaludController {
 
             get("/:id", (req, res) -> {
                 Long id = Long.parseLong(req.params(":id"));
-                ProfesionalSalud p = profDAO.buscarPorId(id);
+                ProfesionalSalud p = profDAO.buscarPorId(Math.toIntExact(id));
                 if (p == null) {
                     res.status(404);
                     return "{}";
@@ -36,7 +36,7 @@ public class ProfesionalSaludController {
 
             put("/:id", (req, res) -> {
                 Long id = Long.parseLong(req.params(":id"));
-                ProfesionalSalud p = profDAO.buscarPorId(id);
+                ProfesionalSalud p = profDAO.buscarPorId(Math.toIntExact(id));
                 if (p == null) {
                     res.status(404);
                     return gson.toJson("{\"error\":\"Profesional no encontrado\"}");

@@ -4,7 +4,6 @@ import consultorio.modelo.Cita;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
-import java.time.LocalDate;
 import java.util.List;
 
 public class CitaDAO {
@@ -26,7 +25,8 @@ public class CitaDAO {
         return lista;
     }
 
-    public Cita buscarPorId(Long id) {
+    // ✅ CORREGIDO: Integer en lugar de Long
+    public Cita buscarPorId(Integer id) {
         EntityManager em = emf.createEntityManager();
         Cita c = em.find(Cita.class, id);
         em.close();
@@ -44,7 +44,7 @@ public class CitaDAO {
     public void eliminar(Long id) {
         EntityManager em = emf.createEntityManager();
         em.getTransaction().begin();
-        Cita c = em.find(Cita.class, id);
+        Cita c = em.find(Cita.class, id.intValue());
         if (c != null) em.remove(c);
         em.getTransaction().commit();
         em.close();
@@ -60,7 +60,7 @@ public class CitaDAO {
             return em.createQuery(
                     "SELECT c FROM Cita c WHERE c.profesional.id = :medicoId",
                     Cita.class
-            ).setParameter("medicoId", medicoId).getResultList();
+            ).setParameter("medicoId", medicoId.intValue()).getResultList();
         } finally {
             em.close();
         }
@@ -68,45 +68,17 @@ public class CitaDAO {
 
     public List<Cita> buscarPorPaciente(long pacienteId) {
         EntityManager em = emf.createEntityManager();
+        List<Cita> citas = null;
         try {
-            return em.createQuery(
+            citas = em.createQuery(
                             "SELECT c FROM Cita c WHERE c.paciente.id = :pacienteId",
                             Cita.class
                     )
-                    .setParameter("pacienteId", pacienteId)
+                    .setParameter("pacienteId", (int)pacienteId)
                     .getResultList();
         } finally {
             em.close();
         }
-    }
-
-    // ✅ NUEVOS MÉTODOS
-    public List<Cita> buscarPorFecha(LocalDate fecha) {
-        EntityManager em = emf.createEntityManager();
-        try {
-            return em.createQuery(
-                            "SELECT c FROM Cita c WHERE c.fecha = :fecha ORDER BY c.fecha ASC",
-                            Cita.class
-                    )
-                    .setParameter("fecha", fecha)
-                    .getResultList();
-        } finally {
-            em.close();
-        }
-    }
-
-    public List<Cita> buscarEnRango(LocalDate inicio, LocalDate fin) {
-        EntityManager em = emf.createEntityManager();
-        try {
-            return em.createQuery(
-                            "SELECT c FROM Cita c WHERE c.fecha BETWEEN :inicio AND :fin ORDER BY c.fecha ASC",
-                            Cita.class
-                    )
-                    .setParameter("inicio", inicio)
-                    .setParameter("fin", fin)
-                    .getResultList();
-        } finally {
-            em.close();
-        }
+        return citas;
     }
 }

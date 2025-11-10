@@ -25,7 +25,8 @@ public class ProfesionalSaludDAO {
         return lista;
     }
 
-    public ProfesionalSalud buscarPorId(Long id) {
+    // ✅ CORREGIDO: Integer en lugar de Long
+    public ProfesionalSalud buscarPorId(Integer id) {
         EntityManager em = emf.createEntityManager();
         ProfesionalSalud p = em.find(ProfesionalSalud.class, id);
         em.close();
@@ -43,7 +44,7 @@ public class ProfesionalSaludDAO {
     public void eliminar(Long id) {
         EntityManager em = emf.createEntityManager();
         em.getTransaction().begin();
-        ProfesionalSalud p = em.find(ProfesionalSalud.class, id);
+        ProfesionalSalud p = em.find(ProfesionalSalud.class, id.intValue());
         if (p != null) em.remove(p);
         em.getTransaction().commit();
         em.close();

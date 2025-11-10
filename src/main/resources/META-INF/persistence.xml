@@ -1,24 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <persistence xmlns="https://jakarta.ee/xml/ns/persistence" version="3.0">
     <persistence-unit name="consultorioPU" transaction-type="RESOURCE_LOCAL">
+        <!-- Entidades Existentes -->
         <class>consultorio.modelo.Paciente</class>
         <class>consultorio.modelo.Cita</class>
-        <class>consultorio.modelo.profesionales.ProfesionalSalud</class>
-        <class>consultorio.modelo.profesionales.ProfesionalSalud</class>
+        <class>consultorio.modelo.Consultorio</class>
+        <class>consultorio.modelo.Cuidador</class>
+        <class>consultorio.modelo.HistoriaClinica</class>
+        <class>consultorio.modelo.Incapacidad</class>
         <class>consultorio.modelo.Notificacion</class>
-        <class>consultorio.modelo.TipoNotificacion</class>
+        <class>consultorio.modelo.Usuario</class>
+        <class>consultorio.modelo.profesionales.ProfesionalSalud</class>
+        <class>consultorio.modelo.profesionales.Medico</class>
+        <class>consultorio.modelo.profesionales.Especialista</class>
+
+        <!-- ✨ NUEVAS ENTIDADES -->
+        <class>consultorio.modelo.SignosVitales</class>
+        <class>consultorio.modelo.Vacuna</class>
+        <class>consultorio.modelo.ReporteDiario</class>
+
         <properties>
             <property name="jakarta.persistence.jdbc.driver" value="com.mysql.cj.jdbc.Driver"/>
-            <!-- ⭐️ CAMBIO AQUÍ: Se añade &allowPublicKeyRetrieval=true -->
             <property name="jakarta.persistence.jdbc.url" value="jdbc:mysql://localhost:3306/consultorio_db?useSSL=false&amp;serverTimezone=UTC&amp;allowPublicKeyRetrieval=true"/>
             <property name="jakarta.persistence.jdbc.user" value="root"/>
             <property name="jakarta.persistence.jdbc.password" value="2323"/>
 
-            <!-- ⚠️ ADVERTENCIA DE HIBERNATE: Cambiar MySQL8Dialect por MySQLDialect -->
+            <!-- Dialecto de MySQL -->
             <property name="hibernate.dialect" value="org.hibernate.dialect.MySQLDialect"/>
 
+            <!-- ⚠️ IMPORTANTE: Crear/actualizar tablas automáticamente -->
             <property name="hibernate.hbm2ddl.auto" value="update"/>
+
+            <!-- Mostrar SQL en consola (útil para debug) -->
             <property name="hibernate.show_sql" value="true"/>
+            <property name="hibernate.format_sql" value="true"/>
         </properties>
     </persistence-unit>
 </persistence>

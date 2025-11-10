@@ -1,4 +1,3 @@
-
 package consultorio.persistencia;
 
 import consultorio.modelo.Paciente;
@@ -25,7 +24,8 @@ public class PacienteDAO {
         return lista;
     }
 
-    public Paciente buscarPorId(Long id) {
+    // ✅ CORREGIDO: Integer en lugar de Long
+    public Paciente buscarPorId(Integer id) {
         EntityManager em = emf.createEntityManager();
         Paciente p = em.find(Paciente.class, id);
         em.close();
@@ -43,7 +43,7 @@ public class PacienteDAO {
     public void eliminar(Long id) {
         EntityManager em = emf.createEntityManager();
         em.getTransaction().begin();
-        Paciente p = em.find(Paciente.class, id);
+        Paciente p = em.find(Paciente.class, id.intValue());
         if (p != null) em.remove(p);
         em.getTransaction().commit();
         em.close();
@@ -51,36 +51,5 @@ public class PacienteDAO {
 
     public List<Paciente> listarTodos() {
         return buscarTodos();
-    }
-
-    // ✅ NUEVOS MÉTODOS
-    public List<Paciente> buscarPorNombre(String nombre) {
-        EntityManager em = emf.createEntityManager();
-        try {
-            return em.createQuery(
-                            "SELECT p FROM Paciente p WHERE LOWER(p.nombre) LIKE LOWER(:nombre) OR LOWER(p.apellido) LIKE LOWER(:nombre)",
-                            Paciente.class
-                    )
-                    .setParameter("nombre", "%" + nombre + "%")
-                    .getResultList();
-        } finally {
-            em.close();
-        }
-    }
-
-    public Paciente buscarPorDocumento(String numeroDocumento) {
-        EntityManager em = emf.createEntityManager();
-        try {
-            return em.createQuery(
-                            "SELECT p FROM Paciente p WHERE p.numeroDocumento = :documento",
-                            Paciente.class
-                    )
-                    .setParameter("documento", numeroDocumento)
-                    .getResultStream()
-                    .findFirst()
-                    .orElse(null);
-        } finally {
-            em.close();
-        }
     }
 }

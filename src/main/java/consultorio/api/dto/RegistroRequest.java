@@ -5,11 +5,19 @@ public class RegistroRequest {
     private String email;
     private String password;
     private String rol;
+    private String apellido;
 
     public String getRol() { return rol; }
 
     public void setRol(String rol) { this.rol = rol; }
 
+    public String getApellido() {
+        return apellido;
+    }
+
+    public void setApellido(String apellido) {
+        this.apellido = apellido;
+    }
 
     public String getNombre() {
         return nombre;
@@ -34,6 +42,7 @@ public class RegistroRequest {
     public void setPassword(String password) {
         this.password = password;
     }
+
 }
 
 

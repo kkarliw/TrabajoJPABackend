@@ -29,9 +29,7 @@
             <property name="hibernate.dialect" value="org.hibernate.dialect.MySQLDialect"/>
 
             <!-- ⚠️ IMPORTANTE: Crear/actualizar tablas automáticamente -->
-            <property name="hibernate.hbm2ddl.auto" value="update"/>
-
-            <!-- Mostrar SQL en consola (útil para debug) -->
+            <property name="hibernate.hbm2ddl.auto" value="update"/>            <!-- Mostrar SQL en consola (útil para debug) -->
             <property name="hibernate.show_sql" value="true"/>
             <property name="hibernate.format_sql" value="true"/>
         </properties>

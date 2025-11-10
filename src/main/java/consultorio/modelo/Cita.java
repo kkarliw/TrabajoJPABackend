@@ -9,7 +9,7 @@ import java.time.LocalDate;
 public class Cita {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id; // ✅ CAMBIADO DE Integer a Long
 
     @ManyToOne
     @JoinColumn(name = "paciente_id", nullable = false)
@@ -47,22 +47,21 @@ public class Cita {
         this.estado = EstadoCita.PENDIENTE;
     }
 
-    // ✅ Constructor sin consultorio (para cuando no se asigna sala)
+    // ✅ Constructor sin consultorio
     public Cita(Paciente paciente, ProfesionalSalud profesional, LocalDate fecha, String motivo) {
         this.paciente = paciente;
         this.profesional = profesional;
         this.fecha = fecha;
         this.motivo = motivo;
         this.estado = EstadoCita.PENDIENTE;
-        // consultorio queda null (puede asignarse después)
     }
 
-    // ✅ Getters y Setters
-    public Integer getId() {
+    // ✅ Getters y Setters - ID ahora es Long
+    public Long getId() {
         return id;
     }
 
-    public void setId(Integer id) {
+    public void setId(Long id) {
         this.id = id;
     }
 
@@ -114,12 +113,10 @@ public class Cita {
         this.estado = estado;
     }
 
-    // ✅ Método auxiliar para obtener número de sala
     public String getNumeroSala() {
         return this.consultorio != null ? this.consultorio.getNumeroSala() : "N/A";
     }
 
-    // ✅ Override toString para debugging
     @Override
     public String toString() {
         return "Cita{" +

@@ -49,7 +49,7 @@ public class AuthController {
                         ? r.getRol().toUpperCase()
                         : "PACIENTE";
 
-                if (!rol.matches("ADMIN|PACIENTE|MEDICO|CUIDADOR")) {
+                if (!rol.matches("ADMIN|PACIENTE|MEDICO|CUIDADOR|RECEPCIONISTA")) {
                     rol = "PACIENTE";
                 }
 

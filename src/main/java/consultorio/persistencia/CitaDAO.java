@@ -25,8 +25,8 @@ public class CitaDAO {
         return lista;
     }
 
-    // ✅ CORREGIDO: Integer en lugar de Long
-    public Cita buscarPorId(Integer id) {
+    // ✅ CORREGIDO: Cambiar Integer a Long
+    public Cita buscarPorId(Long id) {
         EntityManager em = emf.createEntityManager();
         Cita c = em.find(Cita.class, id);
         em.close();
@@ -41,10 +41,11 @@ public class CitaDAO {
         em.close();
     }
 
+    // ✅ CORREGIDO: Ya no necesitas .intValue()
     public void eliminar(Long id) {
         EntityManager em = emf.createEntityManager();
         em.getTransaction().begin();
-        Cita c = em.find(Cita.class, id.intValue());
+        Cita c = em.find(Cita.class, id);
         if (c != null) em.remove(c);
         em.getTransaction().commit();
         em.close();
@@ -54,19 +55,21 @@ public class CitaDAO {
         return buscarTodos();
     }
 
+    // ✅ CORREGIDO: Ya no necesitas .intValue()
     public List<Cita> buscarPorMedico(Long medicoId) {
         EntityManager em = emf.createEntityManager();
         try {
             return em.createQuery(
                     "SELECT c FROM Cita c WHERE c.profesional.id = :medicoId",
                     Cita.class
-            ).setParameter("medicoId", medicoId.intValue()).getResultList();
+            ).setParameter("medicoId", medicoId).getResultList();
         } finally {
             em.close();
         }
     }
 
-    public List<Cita> buscarPorPaciente(long pacienteId) {
+    // ✅ CORREGIDO: Cambiar long primitivo a Long objeto y eliminar cast
+    public List<Cita> buscarPorPaciente(Long pacienteId) {
         EntityManager em = emf.createEntityManager();
         List<Cita> citas = null;
         try {
@@ -74,7 +77,7 @@ public class CitaDAO {
                             "SELECT c FROM Cita c WHERE c.paciente.id = :pacienteId",
                             Cita.class
                     )
-                    .setParameter("pacienteId", (int)pacienteId)
+                    .setParameter("pacienteId", pacienteId)
                     .getResultList();
         } finally {
             em.close();

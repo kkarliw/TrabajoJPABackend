@@ -1,50 +1,85 @@
 package consultorio.persistencia;
 
 import consultorio.modelo.HistoriaClinica;
-import jakarta.persistence.*;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Persistence;
+import jakarta.persistence.NoResultException;
 import java.util.List;
 
 public class HistoriaClinicaDAO {
-    private static EntityManagerFactory emf = Persistence.createEntityManagerFactory("consultorioPU");
 
-    public HistoriaClinica crear(HistoriaClinica h) {
+    private EntityManagerFactory emf = Persistence.createEntityManagerFactory("consultorioPU");
+
+    public void crear(HistoriaClinica historia) {
         EntityManager em = emf.createEntityManager();
-        try {
-            em.getTransaction().begin();
-            em.persist(h);
-            em.getTransaction().commit();
-            return h;
-        } finally {
-            em.close();
-        }
+        em.getTransaction().begin();
+        em.persist(historia);
+        em.getTransaction().commit();
+        em.close();
     }
 
-    public static HistoriaClinica buscarPorId(Long id) {
+    public List<HistoriaClinica> buscarTodos() {
         EntityManager em = emf.createEntityManager();
-        try {
-            return em.find(HistoriaClinica.class, id);
-        } finally {
-            em.close();
-        }
+        List<HistoriaClinica> lista = em.createQuery(
+                "SELECT h FROM HistoriaClinica h",
+                HistoriaClinica.class
+        ).getResultList();
+        em.close();
+        return lista;
     }
 
-    public static List<HistoriaClinica> buscarPorPaciente(long idPaciente) {
-        try (EntityManager em = emf.createEntityManager()) {
+    public HistoriaClinica buscarPorId(Long id) {
+        EntityManager em = emf.createEntityManager();
+        HistoriaClinica h = em.find(HistoriaClinica.class, id);
+        em.close();
+        return h;
+    }
+
+    public HistoriaClinica buscarPorPaciente(Long pacienteId) {
+        EntityManager em = emf.createEntityManager();
+        try {
             return em.createQuery(
-                            "SELECT h FROM HistoriaClinica h WHERE h.paciente.id = :id ORDER BY h.fecha DESC",
-                            HistoriaClinica.class)
-                    .setParameter("id", idPaciente)
-                    .getResultList();
+                            "SELECT h FROM HistoriaClinica h WHERE h.paciente.id = :pacienteId",
+                            HistoriaClinica.class
+                    ).setParameter("pacienteId", pacienteId)
+                    .getSingleResult();
+        } catch (NoResultException e) {
+            return null;
+        } finally {
+            em.close();
         }
     }
 
-    public static List<HistoriaClinica> buscarTodos() {
+    public List<HistoriaClinica> buscarPorProfesional(Long profesionalId) {
         EntityManager em = emf.createEntityManager();
         try {
-            return em.createQuery("SELECT h FROM HistoriaClinica h ORDER BY h.fecha DESC", HistoriaClinica.class)
+            return em.createQuery(
+                            "SELECT h FROM HistoriaClinica h WHERE h.profesional.id = :profesionalId",
+                            HistoriaClinica.class
+                    ).setParameter("profesionalId", profesionalId)
                     .getResultList();
         } finally {
             em.close();
         }
+    }
+
+    public void actualizar(HistoriaClinica historia) {
+        EntityManager em = emf.createEntityManager();
+        em.getTransaction().begin();
+        em.merge(historia);
+        em.getTransaction().commit();
+        em.close();
+    }
+
+    public void eliminar(Long id) {
+        EntityManager em = emf.createEntityManager();
+        em.getTransaction().begin();
+        HistoriaClinica h = em.find(HistoriaClinica.class, id);
+        if (h != null) {
+            em.remove(h);
+        }
+        em.getTransaction().commit();
+        em.close();
     }
 }

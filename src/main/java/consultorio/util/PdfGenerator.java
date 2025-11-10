@@ -62,7 +62,7 @@ public class PdfGenerator {
             y -= leading * 4;
 
             // Incapacidad (si aplica)
-            if (h.isRequiereIncapacidad()) {
+            if (h.setRequiereIncapacidad()) {
                 writeSection(cs, "Nota: Se ha solicitado incapacidad (ver registro)", "", marginLeft, y);
                 y -= leading * 2;
             }

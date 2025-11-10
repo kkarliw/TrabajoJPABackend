@@ -57,7 +57,7 @@ public class PanelSaludController {
                 }
 
                 // Buscar entidades
-                Paciente paciente = pacienteDAO.buscarPorId((int) pacienteId.longValue());
+                Paciente paciente = pacienteDAO.buscarPorId((long) pacienteId.longValue());
                 if (paciente == null) {
                     res.status(404);
                     return gson.toJson(java.util.Map.of("error", "Paciente no encontrado"));
@@ -128,7 +128,7 @@ public class PanelSaludController {
                 }
 
                 // Buscar entidades
-                Paciente paciente = pacienteDAO.buscarPorId((int) pacienteId.longValue());
+                Paciente paciente = pacienteDAO.buscarPorId((long) pacienteId.longValue());
                 if (paciente == null) {
                     res.status(404);
                     return gson.toJson(java.util.Map.of("error", "Paciente no encontrado"));
@@ -209,7 +209,7 @@ public class PanelSaludController {
             res.type("application/json");
             Integer pacienteId = Integer.parseInt(req.params(":pacienteId"));
 
-            Paciente paciente = pacienteDAO.buscarPorId((int) pacienteId.longValue());
+            Paciente paciente = pacienteDAO.buscarPorId((long) pacienteId.longValue());
             if (paciente == null) {
                 res.status(404);
                 return gson.toJson(java.util.Map.of("error", "Paciente no encontrado"));

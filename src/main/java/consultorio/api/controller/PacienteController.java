@@ -18,7 +18,7 @@ public class PacienteController {
 
             get("/:id", (req, res) -> {
                 Integer id = Integer.valueOf(req.params(":id"));
-                Paciente p = pacienteDAO.buscarPorId((int) id.longValue());
+                Paciente p = pacienteDAO.buscarPorId((long) id.longValue());
                 if (p == null) {
                     res.status(404);
                     return gson.toJson("{\"error\":\"Paciente no encontrado\"}");
@@ -35,7 +35,7 @@ public class PacienteController {
 
             put("/:id", (req, res) -> {
                 Long id = Long.parseLong(req.params(":id"));
-                Paciente p = pacienteDAO.buscarPorId(Math.toIntExact(id));
+                Paciente p = pacienteDAO.buscarPorId((long) Math.toIntExact(id));
                 if (p == null) {
                     res.status(404);
                     return gson.toJson("{\"error\":\"Paciente no encontrado\"}");

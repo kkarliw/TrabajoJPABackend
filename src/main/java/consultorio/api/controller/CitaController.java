@@ -90,7 +90,7 @@ public class CitaController {
                 }
 
                 // Buscar entidades
-                Paciente p = pacienteDAO.buscarPorId(Math.toIntExact(input.pacienteId));
+                Paciente p = pacienteDAO.buscarPorId((long) Math.toIntExact(input.pacienteId));
                 ProfesionalSalud prof = profDAO.buscarPorId(Math.toIntExact(input.profesionalId));
 
                 if (p == null || prof == null) {

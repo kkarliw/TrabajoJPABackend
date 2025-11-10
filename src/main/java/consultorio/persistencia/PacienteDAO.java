@@ -25,7 +25,7 @@ public class PacienteDAO {
     }
 
     // ✅ CORREGIDO: Integer en lugar de Long
-    public Paciente buscarPorId(Integer id) {
+    public Paciente buscarPorId(Long id) {  // ✅ Long en lugar de Integer
         EntityManager em = emf.createEntityManager();
         Paciente p = em.find(Paciente.class, id);
         em.close();

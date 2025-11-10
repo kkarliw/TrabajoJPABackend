@@ -8,7 +8,7 @@ public class ProfesionalSalud {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id;
     private String nombre;
     private String apellido;
     private String tipoProfesional;
@@ -17,7 +17,7 @@ public class ProfesionalSalud {
     private String telefono;
     private String numeroLicencia;
 
-    public ProfesionalSalud(Integer id, String nombre, String apellido, String tipoProfesional, String especialidad, String email, String telefono, String numeroLicencia) {
+    public ProfesionalSalud(Long id, String nombre, String apellido, String tipoProfesional, String especialidad, String email, String telefono, String numeroLicencia) {
         this.id = id;
         this.nombre = nombre;
         this.apellido = apellido;
@@ -32,10 +32,10 @@ public class ProfesionalSalud {
     }
 
     public Integer getId() {
-        return id;
+        return Math.toIntExact(id);
     }
 
-    public void setId(Integer id) {
+    public void setId(Long id) {
         this.id = id;
     }
 

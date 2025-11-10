@@ -26,7 +26,7 @@
             <property name="jakarta.persistence.jdbc.password" value="2323"/>
 
             <!-- Dialecto de MySQL -->
-            <property name="hibernate.dialect" value="org.hibernate.dialect.MySQLDialect"/>
+            <property name="hibernate.hbm2ddl.auto" value="update"/>
 
             <!-- ⚠️ IMPORTANTE: Crear/actualizar tablas automáticamente -->
             <property name="hibernate.hbm2ddl.auto" value="update"/>            <!-- Mostrar SQL en consola (útil para debug) -->

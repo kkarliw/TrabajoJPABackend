@@ -111,7 +111,7 @@ public class CuidadorController {
                 }
 
                 // Buscar entidades
-                Paciente paciente = pacienteDAO.buscarPorId(Math.toIntExact(dto.getPacienteId()));
+                Paciente paciente = pacienteDAO.buscarPorId((long) Math.toIntExact(dto.getPacienteId()));
                 if (paciente == null) {
                     res.status(404);
                     return gson.toJson(java.util.Map.of("error", "Paciente no encontrado"));

@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import consultorio.modelo.*;
 import consultorio.persistencia.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -25,42 +26,33 @@ public class PacienteController {
             get("", (req, res) -> {
                 res.type("application/json");
                 List<Paciente> pacientes = pacienteDAO.listarTodos();
+
+                // ✅ IMPORTANTE: Limpiar colecciones lazy para evitar LazyInitializationException
+                pacientes.forEach(p -> {
+                    p.setCitas(new ArrayList<>()); // Vaciar citas
+                    p.setSignosVitales(new ArrayList<>()); // Vaciar signos vitales
+                    p.setVacunas(new ArrayList<>()); // Vaciar vacunas
+                    p.setHistoriasClinicas(new ArrayList<>()); // Vaciar historias
+                });
+
                 return gson.toJson(pacientes);
             });
-
             // ============ OBTENER PACIENTE POR ID ============
             get("/:id", (req, res) -> {
                 res.type("application/json");
-                Long id;
-                try {
-                    id = Long.parseLong(req.params(":id"));
-                } catch (NumberFormatException e) {
-                    res.status(400);
-                    return gson.toJson(Map.of("error", "ID inválido"));
-                }
-
+                Long id = Long.parseLong(req.params(":id"));
                 Paciente paciente = pacienteDAO.buscarPorId(id);
+
                 if (paciente == null) {
                     res.status(404);
                     return gson.toJson(Map.of("error", "Paciente no encontrado"));
                 }
 
-                // Incluir relaciones si se pasa ?detalles=true
-                String detalles = req.queryParams("detalles");
-                if (detalles != null && detalles.equalsIgnoreCase("true")) {
-                    List<Cita> citas = citaDAO.buscarPorPaciente(id);
-                    List<HistoriaClinica> historias = historiaDAO.buscarPorPaciente(id);
-                    List<SignosVitales> signos = signosDAO.buscarPorPaciente(id);
-                    List<Vacuna> vacunas = vacunaDAO.buscarPorPaciente(id);
-
-                    return gson.toJson(Map.of(
-                            "paciente", paciente,
-                            "citas", citas,
-                            "historias", historias,
-                            "signosVitales", signos,
-                            "vacunas", vacunas
-                    ));
-                }
+                // ✅ Limpiar colecciones
+                paciente.setCitas(new ArrayList<>());
+                paciente.setSignosVitales(new ArrayList<>());
+                paciente.setVacunas(new ArrayList<>());
+                paciente.setHistoriasClinicas(new ArrayList<>());
 
                 return gson.toJson(paciente);
             });
@@ -74,28 +66,38 @@ public class PacienteController {
                 }
 
                 try {
-                    // 👇 AÑADE ESTAS 3 LÍNEAS PARA DEBUG
-                    System.out.println("🎯 JSON recibido para crear paciente:");
+                    System.out.println("🎯 Creando paciente...");
                     System.out.println("BODY: " + req.body());
-                    System.out.println("HEADERS: " + req.headers());
 
                     Paciente paciente = gson.fromJson(req.body(), Paciente.class);
 
-                    // 👇 AÑADE ESTA LÍNEA TAMBIÉN
-                    System.out.println("✅ Paciente parseado correctamente: " + paciente.getNombre());
+                    // Validar que todos los campos requeridos estén presentes
+                    if (paciente.getNombre() == null || paciente.getNombre().isEmpty()) {
+                        res.status(400);
+                        return gson.toJson(Map.of("error", "El nombre es requerido"));
+                    }
+                    if (paciente.getApellido() == null || paciente.getApellido().isEmpty()) {
+                        res.status(400);
+                        return gson.toJson(Map.of("error", "El apellido es requerido"));
+                    }
+                    if (paciente.getFechaNacimiento() == null) {
+                        res.status(400);
+                        return gson.toJson(Map.of("error", "La fecha de nacimiento es requerida"));
+                    }
+
+                    System.out.println("✅ Paciente válido: " + paciente.getNombre() + " " + paciente.getApellido());
 
                     pacienteDAO.crear(paciente);
                     res.status(201);
                     return gson.toJson(paciente);
+
                 } catch (Exception e) {
-                    // 👇 AÑADE ESTAS LÍNEAS PARA VER EL ERROR COMPLETO
                     System.out.println("❌ ERROR AL CREAR PACIENTE:");
                     System.out.println("MENSAJE: " + e.getMessage());
-                    System.out.println("CAUSA: " + e.getCause());
-                    e.printStackTrace(); // 👈 ESTO MUESTRA EL ERROR COMPLETO
+                    e.printStackTrace();
 
                     res.status(400);
-                    return gson.toJson(Map.of("error", "Error al crear paciente: " + e.getMessage()));
+                    return gson.toJson(Map.of("error", "Error: " + e.getMessage()));
                 }
             });
 

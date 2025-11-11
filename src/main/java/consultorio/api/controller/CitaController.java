@@ -30,14 +30,12 @@ public class CitaController {
     public static void registerRoutes(Gson gson) {
         path("/api/citas", () -> {
 
-            // ============ LISTAR TODAS LAS CITAS ============
             get("", (req, res) -> {
                 res.type("application/json");
                 List<Cita> list = citaDAO.buscarTodos();
                 return gson.toJson(list);
             });
 
-            // ============ BUSCAR CITA POR ID ============
             get("/:id", (req, res) -> {
                 res.type("application/json");
                 Long id = Long.parseLong(req.params(":id"));
@@ -50,7 +48,6 @@ public class CitaController {
                 return gson.toJson(c);
             });
 
-            // ============ BUSCAR CITAS POR PACIENTE ============
             get("/paciente/:pacienteId", (req, res) -> {
                 res.type("application/json");
                 Long pacienteId = Long.parseLong(req.params(":pacienteId"));
@@ -58,7 +55,6 @@ public class CitaController {
                 return gson.toJson(citas);
             });
 
-            // ============ BUSCAR CITAS POR MÉDICO ============
             get("/medico/:medicoId", (req, res) -> {
                 res.type("application/json");
                 Long medicoId = Long.parseLong(req.params(":medicoId"));
@@ -66,13 +62,17 @@ public class CitaController {
                 return gson.toJson(citas);
             });
 
-            // ============ CREAR CITA ============
-            // ✅ PERMITIR: ADMIN, MEDICO, RECEPCIONISTA
+            // ============ CREAR CITA CON DEBUG ============
             post("", (req, res) -> {
                 res.type("application/json");
+
+                // 🎯 DEBUG
+                System.out.println("\n🎯 === CREANDO CITA ===");
+                System.out.println("BODY: " + req.body());
+                System.out.println("ROL: " + req.attribute("rol"));
+
                 String rol = req.attribute("rol");
 
-                // ✅ VALIDACIÓN DE ROL
                 if (rol == null || (!rol.equals("ADMIN") && !rol.equals("MEDICO") && !rol.equals("RECEPCIONISTA"))) {
                     res.status(403);
                     return gson.toJson(Map.of("error", "Acceso denegado: requiere rol ADMIN, MEDICO o RECEPCIONISTA"));
@@ -81,18 +81,26 @@ public class CitaController {
                 CitaInput input;
                 try {
                     input = gson.fromJson(req.body(), CitaInput.class);
+                    System.out.println("✅ Input parseado:");
+                    System.out.println("   - pacienteId: " + input.pacienteId);
+                    System.out.println("   - profesionalId: " + input.profesionalId);
+                    System.out.println("   - fecha: " + input.fecha);
+                    System.out.println("   - motivo: " + input.motivo);
                 } catch (Exception e) {
+                    System.out.println("❌ Error al parsear JSON: " + e.getMessage());
                     res.status(400);
                     return gson.toJson(Map.of("error", "JSON inválido: " + e.getMessage()));
                 }
 
                 // Validaciones
                 if (input.fecha == null || input.fecha.trim().isEmpty()) {
+                    System.out.println("❌ Fecha vacía");
                     res.status(400);
                     return gson.toJson(Map.of("error", "El campo 'fecha' es obligatorio"));
                 }
 
                 if (input.pacienteId == null || input.profesionalId == null) {
+                    System.out.println("❌ pacienteId o profesionalId nulo");
                     res.status(400);
                     return gson.toJson(Map.of("error", "Debe especificar paciente y profesional"));
                 }
@@ -101,18 +109,27 @@ public class CitaController {
                 Paciente p = pacienteDAO.buscarPorId(input.pacienteId);
                 ProfesionalSalud prof = profDAO.buscarPorId(Math.toIntExact(input.profesionalId));
 
-                if (p == null || prof == null) {
+                if (p == null) {
+                    System.out.println("❌ Paciente no encontrado: " + input.pacienteId);
                     res.status(404);
-                    return gson.toJson(Map.of("error", "Paciente o profesional no existe"));
+                    return gson.toJson(Map.of("error", "Paciente no existe"));
+                }
+
+                if (prof == null) {
+                    System.out.println("❌ Profesional no encontrado: " + input.profesionalId);
+                    res.status(404);
+                    return gson.toJson(Map.of("error", "Profesional no existe"));
                 }
 
                 // Parsear fecha
                 LocalDate fecha;
                 try {
                     fecha = LocalDate.parse(input.fecha);
+                    System.out.println("✅ Fecha parseada: " + fecha);
                 } catch (DateTimeParseException e) {
+                    System.out.println("❌ Error al parsear fecha '" + input.fecha + "': " + e.getMessage());
                     res.status(400);
-                    return gson.toJson(Map.of("error", "Formato de fecha inválido. Use YYYY-MM-DD"));
+                    return gson.toJson(Map.of("error", "Formato de fecha inválido. Use YYYY-MM-DD. Recibido: " + input.fecha));
                 }
 
                 // Crear cita
@@ -120,16 +137,17 @@ public class CitaController {
 
                 try {
                     citaDAO.crear(c);
+                    System.out.println("✅ Cita creada exitosamente: " + c);
                     res.status(201);
                     return gson.toJson(c);
                 } catch (Exception e) {
+                    System.out.println("❌ Error al guardar cita: " + e.getMessage());
+                    e.printStackTrace();
                     res.status(500);
                     return gson.toJson(Map.of("error", "Error al crear la cita: " + e.getMessage()));
                 }
             });
 
-            // ============ ACTUALIZAR CITA ============
-            // ✅ PERMITIR: ADMIN, MEDICO, RECEPCIONISTA
             put("/:id", (req, res) -> {
                 res.type("application/json");
                 String rol = req.attribute("rol");
@@ -150,7 +168,6 @@ public class CitaController {
                 try {
                     CitaInput input = gson.fromJson(req.body(), CitaInput.class);
 
-                    // Actualizar campos si vienen en el request
                     if (input.fecha != null && !input.fecha.isEmpty()) {
                         citaExistente.setFecha(LocalDate.parse(input.fecha));
                     }
@@ -167,8 +184,6 @@ public class CitaController {
                 }
             });
 
-            // ============ ELIMINAR CITA ============
-            // ✅ PERMITIR: ADMIN, RECEPCIONISTA
             delete("/:id", (req, res) -> {
                 res.type("application/json");
                 String rol = req.attribute("rol");

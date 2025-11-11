@@ -1,6 +1,7 @@
 package consultorio.api.controller;
 
 import com.google.gson.Gson;
+import consultorio.util.GsonConfig;
 import spark.Request;
 import spark.Response;
 import static spark.Spark.*;
@@ -8,7 +9,7 @@ import java.util.Map;
 
 public class ConsultorioController {
 
-    private static final Gson gson = new Gson();
+    private static final Gson gson = GsonConfig.createGson();
 
     public static void configurarRutas() {
 

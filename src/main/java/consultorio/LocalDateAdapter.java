@@ -1,22 +1,33 @@
 package consultorio;
 
 import com.google.gson.*;
-import java.lang.reflect.Type;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.lang.reflect.Type;
 
-public class LocalDateAdapter implements JsonSerializer<LocalDateTime>, JsonDeserializer<LocalDateTime> {
+public class LocalDateAdapter implements JsonDeserializer<LocalDate>, JsonSerializer<LocalDate> {
 
-    private static final DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+    private static final DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE;
 
     @Override
-    public JsonElement serialize(LocalDateTime dateTime, Type type, JsonSerializationContext context) {
-        return new JsonPrimitive(dateTime.format(formatter));
+    public LocalDate deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context)
+            throws JsonParseException {
+        String dateString = json.getAsString();
+
+        try {
+            // Maneja formato ISO: "2001-10-19"
+            if (dateString.contains("T")) {
+                // Si viene con hora, extrae solo la fecha
+                dateString = dateString.split("T")[0];
+            }
+            return LocalDate.parse(dateString, formatter);
+        } catch (Exception e) {
+            throw new JsonParseException("Error parsing date: " + dateString, e);
+        }
     }
 
     @Override
-    public LocalDateTime deserialize(JsonElement json, Type type, JsonDeserializationContext context)
-            throws JsonParseException {
-        return LocalDateTime.parse(json.getAsString(), formatter);
+    public JsonElement serialize(LocalDate src, Type typeOfSrc, JsonSerializationContext context) {
+        return new JsonPrimitive(formatter.format(src));
     }
 }

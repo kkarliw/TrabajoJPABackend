@@ -30,14 +30,14 @@ public class CitaController {
     public static void registerRoutes(Gson gson) {
         path("/api/citas", () -> {
 
-            // Listar todas las citas
+            // ============ LISTAR TODAS LAS CITAS ============
             get("", (req, res) -> {
                 res.type("application/json");
                 List<Cita> list = citaDAO.buscarTodos();
                 return gson.toJson(list);
             });
 
-            // Buscar cita por ID
+            // ============ BUSCAR CITA POR ID ============
             get("/:id", (req, res) -> {
                 res.type("application/json");
                 Long id = Long.parseLong(req.params(":id"));
@@ -50,7 +50,7 @@ public class CitaController {
                 return gson.toJson(c);
             });
 
-            // Buscar citas por paciente
+            // ============ BUSCAR CITAS POR PACIENTE ============
             get("/paciente/:pacienteId", (req, res) -> {
                 res.type("application/json");
                 Long pacienteId = Long.parseLong(req.params(":pacienteId"));
@@ -58,7 +58,7 @@ public class CitaController {
                 return gson.toJson(citas);
             });
 
-            // Buscar citas por médico/profesional
+            // ============ BUSCAR CITAS POR MÉDICO ============
             get("/medico/:medicoId", (req, res) -> {
                 res.type("application/json");
                 Long medicoId = Long.parseLong(req.params(":medicoId"));
@@ -66,9 +66,17 @@ public class CitaController {
                 return gson.toJson(citas);
             });
 
-            // Crear cita
+            // ============ CREAR CITA ============
+            // ✅ PERMITIR: ADMIN, MEDICO, RECEPCIONISTA
             post("", (req, res) -> {
                 res.type("application/json");
+                String rol = req.attribute("rol");
+
+                // ✅ VALIDACIÓN DE ROL
+                if (rol == null || (!rol.equals("ADMIN") && !rol.equals("MEDICO") && !rol.equals("RECEPCIONISTA"))) {
+                    res.status(403);
+                    return gson.toJson(Map.of("error", "Acceso denegado: requiere rol ADMIN, MEDICO o RECEPCIONISTA"));
+                }
 
                 CitaInput input;
                 try {
@@ -90,7 +98,7 @@ public class CitaController {
                 }
 
                 // Buscar entidades
-                Paciente p = pacienteDAO.buscarPorId((long) Math.toIntExact(input.pacienteId));
+                Paciente p = pacienteDAO.buscarPorId(input.pacienteId);
                 ProfesionalSalud prof = profDAO.buscarPorId(Math.toIntExact(input.profesionalId));
 
                 if (p == null || prof == null) {
@@ -120,9 +128,17 @@ public class CitaController {
                 }
             });
 
-            // Actualizar cita
+            // ============ ACTUALIZAR CITA ============
+            // ✅ PERMITIR: ADMIN, MEDICO, RECEPCIONISTA
             put("/:id", (req, res) -> {
                 res.type("application/json");
+                String rol = req.attribute("rol");
+
+                if (rol == null || (!rol.equals("ADMIN") && !rol.equals("MEDICO") && !rol.equals("RECEPCIONISTA"))) {
+                    res.status(403);
+                    return gson.toJson(Map.of("error", "Acceso denegado"));
+                }
+
                 Long id = Long.parseLong(req.params(":id"));
 
                 Cita citaExistente = citaDAO.buscarPorId(id);
@@ -151,8 +167,17 @@ public class CitaController {
                 }
             });
 
-            // Eliminar cita
+            // ============ ELIMINAR CITA ============
+            // ✅ PERMITIR: ADMIN, RECEPCIONISTA
             delete("/:id", (req, res) -> {
+                res.type("application/json");
+                String rol = req.attribute("rol");
+
+                if (rol == null || (!rol.equals("ADMIN") && !rol.equals("RECEPCIONISTA"))) {
+                    res.status(403);
+                    return gson.toJson(Map.of("error", "Solo ADMIN y RECEPCIONISTA pueden eliminar citas"));
+                }
+
                 Long id = Long.parseLong(req.params(":id"));
 
                 Cita c = citaDAO.buscarPorId(id);

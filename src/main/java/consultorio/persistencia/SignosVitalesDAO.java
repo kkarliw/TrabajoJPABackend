@@ -1,7 +1,9 @@
 package consultorio.persistencia;
 
 import consultorio.modelo.SignosVitales;
-import jakarta.persistence.*;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Persistence;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -68,7 +70,6 @@ public class SignosVitalesDAO {
                     .setParameter("pacienteId", pacienteId)
                     .setMaxResults(1)
                     .getResultList();
-
             return resultado.isEmpty() ? null : resultado.get(0);
         } finally {
             em.close();

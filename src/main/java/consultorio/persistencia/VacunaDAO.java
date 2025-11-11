@@ -1,7 +1,9 @@
 package consultorio.persistencia;
 
 import consultorio.modelo.Vacuna;
-import jakarta.persistence.*;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Persistence;
 import java.util.List;
 
 public class VacunaDAO {
@@ -44,8 +46,7 @@ public class VacunaDAO {
         EntityManager em = emf.createEntityManager();
         try {
             return em.createQuery(
-                    "SELECT v FROM Vacuna v WHERE v.paciente.id = :pacienteId " +
-                            "AND v.estado = 'PENDIENTE' ORDER BY v.proximaDosis ASC",
+                    "SELECT v FROM Vacuna v WHERE v.paciente.id = :pacienteId AND v.estado = 'PENDIENTE' ORDER BY v.proximaDosis ASC",
                     Vacuna.class
             ).setParameter("pacienteId", pacienteId).getResultList();
         } finally {

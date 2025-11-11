@@ -35,14 +35,14 @@ public class HistoriaClinicaController {
     public static void registerRoutes(Gson gson) {
         path("/api/historias", () -> {
 
-            // Listar todas
+            // ============ LISTAR TODAS ============
             get("", (req, res) -> {
                 res.type("application/json");
                 List<HistoriaClinica> list = historiaDAO.buscarTodos();
                 return gson.toJson(list);
             });
 
-            // Buscar por ID
+            // ============ BUSCAR POR ID ============
             get("/:id", (req, res) -> {
                 res.type("application/json");
                 Long id = Long.parseLong(req.params(":id"));
@@ -59,7 +59,7 @@ public class HistoriaClinicaController {
             get("/paciente/:pacienteId", (req, res) -> {
                 res.type("application/json");
                 Long pacienteId = Long.parseLong(req.params(":pacienteId"));
-                HistoriaClinica h = historiaDAO.buscarPorPaciente(pacienteId);
+                HistoriaClinica h = (HistoriaClinica) historiaDAO.buscarPorPaciente(pacienteId);
 
                 if (h == null) {
                     res.status(404);
@@ -71,6 +71,12 @@ public class HistoriaClinicaController {
             // Crear
             post("", (req, res) -> {
                 res.type("application/json");
+                String rol = req.attribute("rol");
+
+                if (rol == null || (!rol.equals("ADMIN") && !rol.equals("MEDICO"))) {
+                    res.status(403);
+                    return gson.toJson(Map.of("error", "Acceso denegado: solo médicos pueden crear historias clínicas"));
+                }
 
                 HistoriaInput input;
                 try {
@@ -116,7 +122,21 @@ public class HistoriaClinicaController {
             // Actualizar
             put("/:id", (req, res) -> {
                 res.type("application/json");
-                Long id = Long.parseLong(req.params(":id"));
+                String rol = req.attribute("rol");
+
+                if (rol == null || (!rol.equals("ADMIN") && !rol.equals("MEDICO"))) {
+                    res.status(403);
+                    return gson.toJson(Map.of("error", "Acceso denegado"));
+                }
+
+                String idParam = req.params(":id"); // toma el id de la URL
+                Long id;
+                try {
+                    id = Long.parseLong(idParam); // convierte a Long
+                } catch (NumberFormatException e) {
+                    res.status(400);
+                    return gson.toJson(Map.of("error", "ID inválido"));
+                }
 
                 HistoriaClinica h = historiaDAO.buscarPorId(id);
                 if (h == null) {

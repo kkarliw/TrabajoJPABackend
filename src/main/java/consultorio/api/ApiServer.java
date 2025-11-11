@@ -1,25 +1,25 @@
 package consultorio.api;
 
+import consultorio.LocalDateTimeAdapter;
 import consultorio.api.controller.*;
-import consultorio.api.dto.LoginRequest;
-import consultorio.api.dto.RegistroRequest;
-import io.jsonwebtoken.Claims;
-import org.mindrot.jbcrypt.BCrypt;
-import consultorio.modelo.*;
-import consultorio.modelo.profesionales.ProfesionalSalud;
-import consultorio.persistencia.*;
+import consultorio.modelo.Consultorio;
+import consultorio.persistencia.ConsultorioDAO;
 import consultorio.seguridad.JwtUtils;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import consultorio.LocalDateAdapter;
+import io.jsonwebtoken.Claims;
+
 import static spark.Spark.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public class ApiServer {
 
     private static final Gson gson = new GsonBuilder()
             .registerTypeAdapter(LocalDate.class, new LocalDateAdapter())
+            .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()) // 👈 AÑADE ESTA LÍNEA
             .setPrettyPrinting()
             .create();
 
@@ -27,10 +27,9 @@ public class ApiServer {
         port(4567);
         enableCORS();
 
-        // ============ REGISTRAR CONTROLLERS ============
         System.out.println("🚀 Iniciando servidor en puerto 4567...");
 
-        // Registrar todos los controllers
+        // ============ REGISTRAR CONTROLLERS ============
         AuthController.registerRoutes(gson);
         CitaController.registerRoutes(gson);
         PacienteController.registerRoutes(gson);
@@ -43,17 +42,24 @@ public class ApiServer {
 
         System.out.println("✅ Controllers registrados correctamente");
 
-        // ✅ FILTRO JWT (Protege todas las rutas excepto auth)
+        // ============ FILTRO JWT ============
         before("/api/*", (req, res) -> {
             String path = req.pathInfo();
+            String method = req.requestMethod();
 
-            // Permitir rutas públicas
-            if (path.equals("/api/auth/register") ||
-                    path.equals("/api/auth/login")) {
+            // ✅ IGNORAR OPTIONS (preflight)
+            if (method.equals("OPTIONS")) {
                 return;
             }
 
-            // Validar token
+            // ✅ RUTAS PÚBLICAS (sin token)
+            if (path.equals("/api/auth/register") ||
+                    path.equals("/api/auth/login") ||
+                    path.equals("/api/health")) {
+                return;
+            }
+
+            // ✅ VALIDAR TOKEN
             String auth = req.headers("Authorization");
             if (auth == null || !auth.startsWith("Bearer ")) {
                 halt(401, gson.toJson(java.util.Map.of("error", "Token faltante o inválido")));
@@ -81,14 +87,16 @@ public class ApiServer {
             ));
         });
 
-        // ============ CONSULTORIOS (Mantener aquí por ahora) ============
+        // ============ CONSULTORIOS ============
         ConsultorioDAO consultorioDAO = new ConsultorioDAO();
 
+        // LISTAR CONSULTORIOS - Todos los roles autenticados
         get("/api/consultorios", (req, res) -> {
             res.type("application/json");
             return gson.toJson(consultorioDAO.buscarTodos());
         });
 
+        // BUSCAR POR ID - Todos los roles autenticados
         get("/api/consultorios/:id", (req, res) -> {
             res.type("application/json");
             Long id = Long.parseLong(req.params(":id"));
@@ -100,6 +108,7 @@ public class ApiServer {
             return gson.toJson(c);
         });
 
+        // CREAR CONSULTORIO - SOLO ADMIN y MEDICO
         post("/api/consultorios", (req, res) -> {
             res.type("application/json");
             String rol = req.attribute("rol");
@@ -124,6 +133,7 @@ public class ApiServer {
             }
         });
 
+        // ACTUALIZAR CONSULTORIO - SOLO ADMIN y MEDICO
         put("/api/consultorios/:id", (req, res) -> {
             res.type("application/json");
             String rol = req.attribute("rol");
@@ -158,6 +168,7 @@ public class ApiServer {
             }
         });
 
+        // ELIMINAR CONSULTORIO - SOLO ADMIN
         delete("/api/consultorios/:id", (req, res) -> {
             res.type("application/json");
             String rol = req.attribute("rol");
@@ -189,29 +200,34 @@ public class ApiServer {
     }
 
     private static void enableCORS() {
+        // Manejar preflight OPTIONS requests
         options("/*", (request, response) -> {
-            String headers = request.headers("Access-Control-Request-Headers");
-            if (headers != null) {
-                response.header("Access-Control-Allow-Headers", headers);
+            String accessControlRequestHeaders = request.headers("Access-Control-Request-Headers");
+            if (accessControlRequestHeaders != null) {
+                response.header("Access-Control-Allow-Headers", accessControlRequestHeaders);
             }
-            String methods = request.headers("Access-Control-Request-Method");
-            if (methods != null) {
-                response.header("Access-Control-Allow-Methods", methods);
+
+            String accessControlRequestMethod = request.headers("Access-Control-Request-Method");
+            if (accessControlRequestMethod != null) {
+                response.header("Access-Control-Allow-Methods", accessControlRequestMethod);
             }
+
+            response.header("Access-Control-Allow-Origin", "*");
             return "OK";
         });
 
+        // Headers para todas las rutas
         before((request, response) -> {
             response.header("Access-Control-Allow-Origin", "*");
-            response.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-            response.header("Access-Control-Allow-Headers", "Content-Type,Authorization");
-        });
+            response.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS,PATCH");
+            response.header("Access-Control-Allow-Headers", "Content-Type,Authorization,X-Requested-With,Content-Length,Accept,Origin");
+            response.header("Access-Control-Allow-Credentials", "true");
 
-        after((request, response) -> {
-            if (!response.raw().containsHeader("Content-Type") &&
-                    !request.requestMethod().equals("OPTIONS")) {
-                response.type("application/json");
+            // No procesar OPTIONS con el filtro JWT
+            if (request.requestMethod().equals("OPTIONS")) {
+                halt(200);
             }
         });
     }
+
 }

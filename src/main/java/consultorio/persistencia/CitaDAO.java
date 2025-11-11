@@ -7,7 +7,6 @@ import jakarta.persistence.Persistence;
 import java.util.List;
 
 public class CitaDAO {
-
     private EntityManagerFactory emf = Persistence.createEntityManagerFactory("consultorioPU");
 
     public void crear(Cita c) {
@@ -25,7 +24,6 @@ public class CitaDAO {
         return lista;
     }
 
-    // ✅ CORREGIDO: Cambiar Integer a Long
     public Cita buscarPorId(Long id) {
         EntityManager em = emf.createEntityManager();
         Cita c = em.find(Cita.class, id);
@@ -41,7 +39,6 @@ public class CitaDAO {
         em.close();
     }
 
-    // ✅ CORREGIDO: Ya no necesitas .intValue()
     public void eliminar(Long id) {
         EntityManager em = emf.createEntityManager();
         em.getTransaction().begin();
@@ -55,7 +52,6 @@ public class CitaDAO {
         return buscarTodos();
     }
 
-    // ✅ CORREGIDO: Ya no necesitas .intValue()
     public List<Cita> buscarPorMedico(Long medicoId) {
         EntityManager em = emf.createEntityManager();
         try {
@@ -68,20 +64,15 @@ public class CitaDAO {
         }
     }
 
-    // ✅ CORREGIDO: Cambiar long primitivo a Long objeto y eliminar cast
     public List<Cita> buscarPorPaciente(Long pacienteId) {
         EntityManager em = emf.createEntityManager();
-        List<Cita> citas = null;
         try {
-            citas = em.createQuery(
-                            "SELECT c FROM Cita c WHERE c.paciente.id = :pacienteId",
-                            Cita.class
-                    )
-                    .setParameter("pacienteId", pacienteId)
-                    .getResultList();
+            return em.createQuery(
+                    "SELECT c FROM Cita c WHERE c.paciente.id = :pacienteId",
+                    Cita.class
+            ).setParameter("pacienteId", pacienteId).getResultList();
         } finally {
             em.close();
         }
-        return citas;
     }
 }

@@ -8,7 +8,6 @@ import consultorio.persistencia.UsuarioDAO;
 import consultorio.seguridad.JwtUtils;
 import org.mindrot.jbcrypt.BCrypt;
 
-import java.io.Serializable;
 import java.util.Map;
 
 import static spark.Spark.*;
@@ -19,7 +18,7 @@ public class AuthController {
     public static void registerRoutes(Gson gson) {
         path("/api/auth", () -> {
 
-            // Registro
+            // ============ REGISTRO ============
             post("/register", (req, res) -> {
                 res.type("application/json");
 
@@ -45,6 +44,7 @@ public class AuthController {
 
                 String hash = BCrypt.hashpw(r.getPassword(), BCrypt.gensalt());
 
+                // ✅ VALIDACIÓN DE ROL - RECEPCIONISTA INCLUIDO
                 String rol = (r.getRol() != null && !r.getRol().isEmpty())
                         ? r.getRol().toUpperCase()
                         : "PACIENTE";
@@ -58,11 +58,14 @@ public class AuthController {
 
                 try {
                     usuarioDAO.crear(u);
+
+                    // ✅ GENERAR TOKEN INMEDIATAMENTE
+                    String token = JwtUtils.generateToken(u.getId(), u.getRol());
+
                     res.status(201);
-                    Map<? super String, ? super Serializable> token = Map.of();
                     return gson.toJson(Map.of(
                             "token", token,
-                            "user", Map.of(  // ✅ Debe estar anidado en "user"
+                            "user", Map.of(
                                     "id", u.getId(),
                                     "email", u.getEmail(),
                                     "nombre", u.getNombre(),
@@ -76,7 +79,7 @@ public class AuthController {
                 }
             });
 
-            // Login
+            // ============ LOGIN ============
             post("/login", (req, res) -> {
                 res.type("application/json");
 

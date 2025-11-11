@@ -36,20 +36,20 @@ public class HistoriaClinicaDAO {
         return h;
     }
 
-    public HistoriaClinica buscarPorPaciente(Long pacienteId) {
+    public List<HistoriaClinica> buscarPorPaciente(Long pacienteId) {
         EntityManager em = emf.createEntityManager();
         try {
             return em.createQuery(
                             "SELECT h FROM HistoriaClinica h WHERE h.paciente.id = :pacienteId",
                             HistoriaClinica.class
-                    ).setParameter("pacienteId", pacienteId)
-                    .getSingleResult();
-        } catch (NoResultException e) {
-            return null;
+                    )
+                    .setParameter("pacienteId", pacienteId)
+                    .getResultList(); // ✅ devuelve List<HistoriaClinica>
         } finally {
             em.close();
         }
     }
+
 
     public List<HistoriaClinica> buscarPorProfesional(Long profesionalId) {
         EntityManager em = emf.createEntityManager();

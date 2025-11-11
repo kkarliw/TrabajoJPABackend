@@ -24,8 +24,7 @@ public class PacienteDAO {
         return lista;
     }
 
-    // ✅ CORREGIDO: Integer en lugar de Long
-    public Paciente buscarPorId(Long id) {  // ✅ Long en lugar de Integer
+    public Paciente buscarPorId(Long id) {
         EntityManager em = emf.createEntityManager();
         Paciente p = em.find(Paciente.class, id);
         em.close();
@@ -43,7 +42,7 @@ public class PacienteDAO {
     public void eliminar(Long id) {
         EntityManager em = emf.createEntityManager();
         em.getTransaction().begin();
-        Paciente p = em.find(Paciente.class, id.intValue());
+        Paciente p = em.find(Paciente.class, id);
         if (p != null) em.remove(p);
         em.getTransaction().commit();
         em.close();

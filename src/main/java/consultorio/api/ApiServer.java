@@ -6,8 +6,7 @@ import consultorio.modelo.Consultorio;
 import consultorio.persistencia.ConsultorioDAO;
 import consultorio.seguridad.JwtUtils;
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import consultorio.LocalDateAdapter;
+import consultorio.util.GsonConfig;
 import io.jsonwebtoken.Claims;
 
 import static spark.Spark.*;
@@ -17,11 +16,7 @@ import java.time.LocalDateTime;
 
 public class ApiServer {
 
-    private static final Gson gson = new GsonBuilder()
-            .registerTypeAdapter(LocalDate.class, new LocalDateAdapter())
-            .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter()) // 👈 AÑADE ESTA LÍNEA
-            .setPrettyPrinting()
-            .create();
+    private static final Gson gson = GsonConfig.createGson();
 
     public static void main(String[] args) {
         port(4567);

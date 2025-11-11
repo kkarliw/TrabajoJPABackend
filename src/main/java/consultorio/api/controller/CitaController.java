@@ -10,6 +10,7 @@ import consultorio.persistencia.ProfesionalSaludDAO;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -33,19 +34,17 @@ public class CitaController {
             get("", (req, res) -> {
                 res.type("application/json");
                 List<Cita> list = citaDAO.buscarTodos();
+
+                list.forEach(cita -> {
+                    if (cita.getPaciente() != null) {
+                        cita.getPaciente().setCitas(new ArrayList<>());
+                        cita.getPaciente().setSignosVitales(new ArrayList<>());
+                        cita.getPaciente().setVacunas(new ArrayList<>());
+                        cita.getPaciente().setHistoriasClinicas(new ArrayList<>());
+                    }
+                });
+
                 return gson.toJson(list);
-            });
-
-            get("/:id", (req, res) -> {
-                res.type("application/json");
-                Long id = Long.parseLong(req.params(":id"));
-                Cita c = citaDAO.buscarPorId(id);
-
-                if (c == null) {
-                    res.status(404);
-                    return gson.toJson(Map.of("error", "Cita no encontrada"));
-                }
-                return gson.toJson(c);
             });
 
             get("/paciente/:pacienteId", (req, res) -> {
@@ -121,15 +120,23 @@ public class CitaController {
                     return gson.toJson(Map.of("error", "Profesional no existe"));
                 }
 
-                // Parsear fecha
+                // Parsear fecha - acepta YYYY-MM-DD o YYYY-MM-DDTHH:mm
                 LocalDate fecha;
                 try {
-                    fecha = LocalDate.parse(input.fecha);
-                    System.out.println("✅ Fecha parseada: " + fecha);
+                    if (input.fecha.contains("T")) {
+                        // Si viene con hora (datetime-local del HTML), extrae solo la fecha
+                        String soloFecha = input.fecha.split("T")[0];
+                        fecha = LocalDate.parse(soloFecha);
+                        System.out.println("✅ Fecha parseada (de datetime): " + fecha);
+                    } else {
+                        // Si viene sin hora (YYYY-MM-DD)
+                        fecha = LocalDate.parse(input.fecha);
+                        System.out.println("✅ Fecha parseada: " + fecha);
+                    }
                 } catch (DateTimeParseException e) {
                     System.out.println("❌ Error al parsear fecha '" + input.fecha + "': " + e.getMessage());
                     res.status(400);
-                    return gson.toJson(Map.of("error", "Formato de fecha inválido. Use YYYY-MM-DD. Recibido: " + input.fecha));
+                    return gson.toJson(Map.of("error", "Formato de fecha inválido. Use YYYY-MM-DD o YYYY-MM-DDTHH:mm. Recibido: " + input.fecha));
                 }
 
                 // Crear cita
@@ -137,6 +144,13 @@ public class CitaController {
 
                 try {
                     citaDAO.crear(c);
+
+                    // ✅ LIMPIAR COLECCIONES LAZY
+                    c.getPaciente().setCitas(new ArrayList<>());
+                    c.getPaciente().setSignosVitales(new ArrayList<>());
+                    c.getPaciente().setVacunas(new ArrayList<>());
+                    c.getPaciente().setHistoriasClinicas(new ArrayList<>());
+
                     System.out.println("✅ Cita creada exitosamente: " + c);
                     res.status(201);
                     return gson.toJson(c);

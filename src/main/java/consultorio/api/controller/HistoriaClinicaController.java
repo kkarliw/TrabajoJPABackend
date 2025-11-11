@@ -7,182 +7,193 @@ import consultorio.modelo.profesionales.ProfesionalSalud;
 import consultorio.persistencia.HistoriaClinicaDAO;
 import consultorio.persistencia.PacienteDAO;
 import consultorio.persistencia.ProfesionalSaludDAO;
+import consultorio.util.GsonConfig;
+import jakarta.persistence.EntityManager;
+import spark.Spark;
 
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
-
-import static spark.Spark.*;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
 public class HistoriaClinicaController {
+    private HistoriaClinicaDAO historiaDAO;
+    private PacienteDAO pacienteDAO;
+    private ProfesionalSaludDAO profesionalDAO;
+    private EntityManager em;
+    private Gson gson;
+    private static final DateTimeFormatter dateFormatter = DateTimeFormatter.ISO_LOCAL_DATE;
 
-    private static HistoriaClinicaDAO historiaDAO = new HistoriaClinicaDAO();
-    private static PacienteDAO pacienteDAO = new PacienteDAO();
-    private static ProfesionalSaludDAO profDAO = new ProfesionalSaludDAO();
-
-    public static class HistoriaInput {
-        public Long pacienteId;
-        public Long profesionalId;
-        public String fecha;
-        public String diagnostico;
-        public String tratamiento;
-        public String observaciones;
-        public String motivoConsulta;
-        public String formulaMedica;
-        public Boolean requiereIncapacidad;
+    public HistoriaClinicaController(HistoriaClinicaDAO historiaDAO, PacienteDAO pacienteDAO,
+                                     ProfesionalSaludDAO profesionalDAO, EntityManager em) {
+        this.historiaDAO = historiaDAO;
+        this.pacienteDAO = pacienteDAO;
+        this.profesionalDAO = profesionalDAO;
+        this.em = em;
+        this.gson = GsonConfig.createGson();
     }
 
-    public static void registerRoutes(Gson gson) {
-        path("/api/historias", () -> {
+    // DTO simple para evitar proxies
+    public static class HistoriaDTO {
+        public Long id;
+        public String diagnostico;
+        public String motivoConsulta;
+        public String tratamiento;
+        public String formulaMedica;
+        public String observaciones;
+        public Boolean requiereIncapacidad;
+        public LocalDate fecha;
+        public Map<String, Object> paciente;
+        public Map<String, Object> profesional;
 
-            // ============ LISTAR TODAS ============
-            get("", (req, res) -> {
-                res.type("application/json");
-                List<HistoriaClinica> list = historiaDAO.buscarTodos();
-                return gson.toJson(list);
-            });
+        public HistoriaDTO(HistoriaClinica h) {
+            this.id = h.getId();
+            this.diagnostico = h.getDiagnostico();
+            this.motivoConsulta = h.getMotivoConsulta();
+            this.tratamiento = h.getTratamiento();
+            this.formulaMedica = h.getFormulaMedica();
+            this.observaciones = h.getObservaciones();
+            this.requiereIncapacidad = h.getRequiereIncapacidad();
+            this.fecha = h.getFecha();
 
-            // ============ BUSCAR POR ID ============
-            get("/:id", (req, res) -> {
-                res.type("application/json");
-                Long id = Long.parseLong(req.params(":id"));
-                HistoriaClinica h = historiaDAO.buscarPorId(id);
+            // Crear mapas simples sin proxies
+            this.paciente = new HashMap<>();
+            if (h.getPaciente() != null) {
+                this.paciente.put("id", h.getPaciente().getId());
+                this.paciente.put("nombre", h.getPaciente().getNombre());
+                this.paciente.put("apellido", h.getPaciente().getApellido());
+                this.paciente.put("numeroDocumento", h.getPaciente().getNumeroDocumento());
+            }
 
-                if (h == null) {
-                    res.status(404);
-                    return gson.toJson(Map.of("error", "Historia clínica no encontrada"));
-                }
-                return gson.toJson(h);
-            });
+            this.profesional = new HashMap<>();
+            if (h.getProfesional() != null) {
+                this.profesional.put("id", h.getProfesional().getId());
+                this.profesional.put("nombre", h.getProfesional().getNombre());
+                this.profesional.put("especialidad", h.getProfesional().getEspecialidad());
+            }
+        }
+    }
 
-            // Buscar por paciente
-            get("/paciente/:pacienteId", (req, res) -> {
-                res.type("application/json");
-                Long pacienteId = Long.parseLong(req.params(":pacienteId"));
-                HistoriaClinica h = (HistoriaClinica) historiaDAO.buscarPorPaciente(pacienteId);
+    public void registerRoutes() {
+        // POST - Crear historia clínica
+        Spark.post("/api/historias", (req, res) -> {
+            res.type("application/json");
+            System.out.println("🎯 === CREANDO HISTORIA CLÍNICA ===");
+            System.out.println("BODY: " + req.body());
 
-                if (h == null) {
-                    res.status(404);
-                    return gson.toJson(Map.of("error", "No se encontró historia para este paciente"));
-                }
-                return gson.toJson(h);
-            });
+            try {
+                Map<String, Object> input = gson.fromJson(req.body(), Map.class);
+                System.out.println("✅ Input parseado:");
 
-            // Crear
-            post("", (req, res) -> {
-                res.type("application/json");
-                String rol = req.attribute("rol");
+                // Obtener datos
+                Double pacienteIdDouble = (Double) input.get("pacienteId");
+                Double profesionalIdDouble = (Double) input.get("profesionalId");
+                String diagnostico = (String) input.get("diagnostico");
+                String motivoConsulta = (String) input.get("motivoConsulta");
+                String tratamiento = (String) input.get("tratamiento");
+                String formulaMedica = (String) input.get("formulaMedica");
+                String observaciones = (String) input.get("observaciones");
+                Object requiereObj = input.get("requiereIncapacidad");
+                Boolean requiereIncapacidad = requiereObj != null ? (Boolean) requiereObj : false;
 
-                if (rol == null || (!rol.equals("ADMIN") && !rol.equals("MEDICO"))) {
-                    res.status(403);
-                    return gson.toJson(Map.of("error", "Acceso denegado: solo médicos pueden crear historias clínicas"));
-                }
+                int pacienteId = pacienteIdDouble != null ? pacienteIdDouble.intValue() : 0;
+                int profesionalId = profesionalIdDouble != null ? profesionalIdDouble.intValue() : 0;
 
-                HistoriaInput input;
-                try {
-                    input = gson.fromJson(req.body(), HistoriaInput.class);
-                } catch (Exception e) {
+                System.out.println("   - Paciente ID: " + pacienteId);
+                System.out.println("   - Profesional ID: " + profesionalId);
+
+                if (pacienteId == 0 || profesionalId == 0) {
+                    System.out.println("❌ Datos incompletos");
                     res.status(400);
-                    return gson.toJson(Map.of("error", "JSON inválido"));
+                    return gson.toJson(Map.of("error", "Paciente y Profesional son requeridos"));
                 }
 
-                if (input.pacienteId == null || input.profesionalId == null) {
-                    res.status(400);
-                    return gson.toJson(Map.of("error", "Paciente y profesional son obligatorios"));
-                }
+                // Obtener entidades
+                Paciente paciente = pacienteDAO.buscarPorId((long) pacienteId);
+                ProfesionalSalud profesional = profesionalDAO.buscarPorId(profesionalId);
 
-                Paciente p = pacienteDAO.buscarPorId((long) Math.toIntExact(input.pacienteId));
-                ProfesionalSalud prof = profDAO.buscarPorId(Math.toIntExact(input.profesionalId));
-
-                if (p == null || prof == null) {
+                if (paciente == null || profesional == null) {
+                    System.out.println("❌ Paciente o Profesional no encontrado");
                     res.status(404);
-                    return gson.toJson(Map.of("error", "Paciente o profesional no encontrado"));
+                    return gson.toJson(Map.of("error", "Paciente o Profesional no encontrado"));
                 }
 
-                LocalDate fecha = input.fecha != null ? LocalDate.parse(input.fecha) : LocalDate.now();
+                // Crear historia
+                HistoriaClinica historia = new HistoriaClinica();
+                historia.setPaciente(paciente);
+                historia.setProfesional(profesional);
+                historia.setDiagnostico(diagnostico);
+                historia.setMotivoConsulta(motivoConsulta);
+                historia.setTratamiento(tratamiento);
+                historia.setFormulaMedica(formulaMedica);
+                historia.setObservaciones(observaciones);
+                historia.setRequiereIncapacidad(requiereIncapacidad);
+                historia.setFecha(LocalDate.now());
 
-                HistoriaClinica h = new HistoriaClinica(p, prof, fecha);
-                h.setDiagnostico(input.diagnostico);
-                h.setTratamiento(input.tratamiento);
-                h.setObservaciones(input.observaciones);
-                h.setMotivoConsulta(input.motivoConsulta);
-                h.setFormulaMedica(input.formulaMedica);
-                h.setRequiereIncapacidad();
+                historiaDAO.crear(historia);
+                System.out.println("✅ Historia clínica creada: " + historia.getId());
 
-                try {
-                    historiaDAO.crear(h);
-                    res.status(201);
-                    return gson.toJson(h);
-                } catch (Exception e) {
-                    res.status(500);
-                    return gson.toJson(Map.of("error", "Error al crear: " + e.getMessage()));
+                // ✅ Retornar como DTO (sin proxies)
+                HistoriaDTO dto = new HistoriaDTO(historia);
+                res.status(201);
+                return gson.toJson(dto);
+
+            } catch (Exception e) {
+                System.out.println("❌ Error al guardar historia: " + e.getMessage());
+                e.printStackTrace();
+                res.status(500);
+                return gson.toJson(Map.of("error", "Error: " + e.getMessage()));
+            }
+        });
+
+        // GET - Listar todas las historias
+        Spark.get("/api/historias", (req, res) -> {
+            res.type("application/json");
+            System.out.println("🎯 === LISTANDO HISTORIAS CLÍNICAS ===");
+            try {
+                List<HistoriaClinica> historias = historiaDAO.buscarTodas();
+                System.out.println("✅ Historias encontradas: " + historias.size());
+
+                // ✅ Convertir a DTOs (sin proxies)
+                List<HistoriaDTO> dtos = new ArrayList<>();
+                for (HistoriaClinica h : historias) {
+                    try {
+                        dtos.add(new HistoriaDTO(h));
+                    } catch (Exception e) {
+                        System.out.println("⚠️ Error convirtiendo historia " + h.getId() + ": " + e.getMessage());
+                    }
                 }
-            });
 
-            // Actualizar
-            put("/:id", (req, res) -> {
-                res.type("application/json");
-                String rol = req.attribute("rol");
+                System.out.println("✅ DTOs creados: " + dtos.size());
+                return gson.toJson(dtos);
 
-                if (rol == null || (!rol.equals("ADMIN") && !rol.equals("MEDICO"))) {
-                    res.status(403);
-                    return gson.toJson(Map.of("error", "Acceso denegado"));
-                }
+            } catch (Exception e) {
+                System.out.println("❌ Error al listar historias: " + e.getMessage());
+                e.printStackTrace();
+                res.status(500);
+                return gson.toJson(Map.of("error", "Error: " + e.getMessage()));
+            }
+        });
 
-                String idParam = req.params(":id"); // toma el id de la URL
-                Long id;
-                try {
-                    id = Long.parseLong(idParam); // convierte a Long
-                } catch (NumberFormatException e) {
-                    res.status(400);
-                    return gson.toJson(Map.of("error", "ID inválido"));
-                }
+        // GET - Obtener por ID
+        Spark.get("/api/historias/:id", (req, res) -> {
+            res.type("application/json");
+            try {
+                int id = Integer.parseInt(req.params(":id"));
+                HistoriaClinica historia = historiaDAO.buscarPorId((long) id);
 
-                HistoriaClinica h = historiaDAO.buscarPorId(id);
-                if (h == null) {
+                if (historia == null) {
                     res.status(404);
                     return gson.toJson(Map.of("error", "Historia no encontrada"));
                 }
 
-                try {
-                    HistoriaInput input = gson.fromJson(req.body(), HistoriaInput.class);
+                // ✅ Retornar como DTO
+                HistoriaDTO dto = new HistoriaDTO(historia);
+                return gson.toJson(dto);
 
-                    if (input.diagnostico != null) h.setDiagnostico(input.diagnostico);
-                    if (input.tratamiento != null) h.setTratamiento(input.tratamiento);
-                    if (input.observaciones != null) h.setObservaciones(input.observaciones);
-                    if (input.motivoConsulta != null) h.setMotivoConsulta(input.motivoConsulta);
-                    if (input.formulaMedica != null) h.setFormulaMedica(input.formulaMedica);
-                    if (input.requiereIncapacidad != null) h.setRequiereIncapacidad();
-
-                    historiaDAO.actualizar(h);
-                    res.status(200);
-                    return gson.toJson(h);
-                } catch (Exception e) {
-                    res.status(500);
-                    return gson.toJson(Map.of("error", "Error al actualizar"));
-                }
-            });
-
-            // Eliminar
-            delete("/:id", (req, res) -> {
-                res.type("application/json");
-                Long id = Long.parseLong(req.params(":id"));
-
-                HistoriaClinica h = historiaDAO.buscarPorId(id);
-                if (h == null) {
-                    res.status(404);
-                    return gson.toJson(Map.of("error", "Historia no encontrada"));
-                }
-
-                try {
-                    historiaDAO.eliminar(id);
-                    res.status(204);
-                    return "";
-                } catch (Exception e) {
-                    res.status(500);
-                    return gson.toJson(Map.of("error", "Error al eliminar"));
-                }
-            });
+            } catch (Exception e) {
+                res.status(500);
+                return gson.toJson(Map.of("error", "Error: " + e.getMessage()));
+            }
         });
     }
 }

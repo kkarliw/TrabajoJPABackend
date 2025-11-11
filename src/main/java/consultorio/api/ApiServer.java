@@ -1,18 +1,17 @@
 package consultorio.api;
 
-import consultorio.LocalDateTimeAdapter;
 import consultorio.api.controller.*;
 import consultorio.modelo.Consultorio;
-import consultorio.persistencia.ConsultorioDAO;
+import consultorio.persistencia.*;
 import consultorio.seguridad.JwtUtils;
-import com.google.gson.Gson;
 import consultorio.util.GsonConfig;
+import com.google.gson.Gson;
 import io.jsonwebtoken.Claims;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.Persistence;
 
 import static spark.Spark.*;
-
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 public class ApiServer {
 
@@ -24,13 +23,30 @@ public class ApiServer {
 
         System.out.println("🚀 Iniciando servidor en puerto 4567...");
 
+        // ============ INICIALIZAR DAOs Y EntityManager ============
+        EntityManagerFactory emf = Persistence.createEntityManagerFactory("consultorioPU");
+        EntityManager em = emf.createEntityManager();
+
+        HistoriaClinicaDAO historiaDAO = new HistoriaClinicaDAO();
+        PacienteDAO pacienteDAO = new PacienteDAO();
+        ProfesionalSaludDAO profesionalDAO = new ProfesionalSaludDAO();
+
         // ============ REGISTRAR CONTROLLERS ============
         AuthController.registerRoutes(gson);
         CitaController.registerRoutes(gson);
         PacienteController.registerRoutes(gson);
         ProfesionalSaludController.registerRoutes(gson);
         CuidadorController.registerRoutes(gson);
-        HistoriaClinicaController.registerRoutes(gson);
+
+        // ✅ ARREGLADO - Crear instancia y llamar método de instancia
+        HistoriaClinicaController historiaController = new HistoriaClinicaController(
+                historiaDAO,
+                pacienteDAO,
+                profesionalDAO,
+                em
+        );
+        historiaController.registerRoutes();
+
         NotificacionController.registerRoutes(gson);
         EstadisticasController.registerRoutes(gson);
         PanelSaludController.registerRoutes(gson);
@@ -85,13 +101,13 @@ public class ApiServer {
         // ============ CONSULTORIOS ============
         ConsultorioDAO consultorioDAO = new ConsultorioDAO();
 
-        // LISTAR CONSULTORIOS - Todos los roles autenticados
+        // LISTAR CONSULTORIOS
         get("/api/consultorios", (req, res) -> {
             res.type("application/json");
             return gson.toJson(consultorioDAO.buscarTodos());
         });
 
-        // BUSCAR POR ID - Todos los roles autenticados
+        // BUSCAR POR ID
         get("/api/consultorios/:id", (req, res) -> {
             res.type("application/json");
             Long id = Long.parseLong(req.params(":id"));
@@ -103,7 +119,7 @@ public class ApiServer {
             return gson.toJson(c);
         });
 
-        // CREAR CONSULTORIO - SOLO ADMIN y MEDICO
+        // CREAR CONSULTORIO
         post("/api/consultorios", (req, res) -> {
             res.type("application/json");
             String rol = req.attribute("rol");
@@ -128,7 +144,7 @@ public class ApiServer {
             }
         });
 
-        // ACTUALIZAR CONSULTORIO - SOLO ADMIN y MEDICO
+        // ACTUALIZAR CONSULTORIO
         put("/api/consultorios/:id", (req, res) -> {
             res.type("application/json");
             String rol = req.attribute("rol");
@@ -163,7 +179,7 @@ public class ApiServer {
             }
         });
 
-        // ELIMINAR CONSULTORIO - SOLO ADMIN
+        // ELIMINAR CONSULTORIO
         delete("/api/consultorios/:id", (req, res) -> {
             res.type("application/json");
             String rol = req.attribute("rol");
@@ -224,5 +240,4 @@ public class ApiServer {
             }
         });
     }
-
 }

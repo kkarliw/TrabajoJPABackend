@@ -61,8 +61,8 @@ public class PdfGenerator {
             writeSection(cs, "Receta / Fórmula", h.getFormulaMedica(), marginLeft, y);
             y -= leading * 4;
 
-            // Incapacidad (si aplica)
-            if (h.setRequiereIncapacidad()) {
+            // ✅ ARREGLADO - Usar getRequiereIncapacidad() en lugar de setRequiereIncapacidad()
+            if (h.getRequiereIncapacidad() != null && h.getRequiereIncapacidad()) {
                 writeSection(cs, "Nota: Se ha solicitado incapacidad (ver registro)", "", marginLeft, y);
                 y -= leading * 2;
             }

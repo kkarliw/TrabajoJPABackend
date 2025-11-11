@@ -124,8 +124,8 @@ public class HistoriaClinica {
         return requiereIncapacidad != null ? requiereIncapacidad : false;
     }
 
-    public boolean setRequiereIncapacidad() {
-        this.requiereIncapacidad = requiereIncapacidad;
+    public boolean setRequiereIncapacidad(Boolean requiereIncapacidad) {
+        this.requiereIncapacidad = this.requiereIncapacidad;
         this.updatedAt = LocalDate.now();
         return false;
     }

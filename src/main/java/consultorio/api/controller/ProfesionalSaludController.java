@@ -3,6 +3,9 @@ package consultorio.api.controller;
 import com.google.gson.Gson;
 import consultorio.modelo.profesionales.ProfesionalSalud;
 import consultorio.persistencia.ProfesionalSaludDAO;
+
+import java.util.Map;
+
 import static spark.Spark.*;
 
 public class ProfesionalSaludController {
@@ -13,6 +16,23 @@ public class ProfesionalSaludController {
             get("", (req, res) -> {
                 res.type("application/json");
                 return gson.toJson(profDAO.buscarTodos());
+            });
+            get("/mi-perfil", (req, res) -> {
+                res.type("application/json");
+                Long userId = req.attribute("userId");
+
+                if (userId == null) {
+                    res.status(401);
+                    return gson.toJson(Map.of("error", "No autenticado"));
+                }
+
+                ProfesionalSalud prof = profDAO.buscarPorId(Math.toIntExact(userId));
+                if (prof == null) {
+                    res.status(404);
+                    return gson.toJson(Map.of("error", "Perfil profesional no encontrado"));
+                }
+
+                return gson.toJson(prof);
             });
 
             get("/:id", (req, res) -> {

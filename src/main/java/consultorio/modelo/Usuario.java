@@ -15,6 +15,10 @@ public class Usuario {
     private String passwordHash;
     private String rol;
 
+    // ✅ NUEVO CAMPO
+    @Column(name = "profesional_id")
+    private Long profesionalId;
+
     public Usuario() {}
 
     public Usuario(String email, String nombre, String passwordHash, String rol) {
@@ -45,4 +49,8 @@ public class Usuario {
 
     public String getRol() { return rol; }
     public void setRol(String rol) { this.rol = rol; }
+
+    // ✅ NUEVOS GETTERS Y SETTERS
+    public Long getProfesionalId() { return profesionalId; }
+    public void setProfesionalId(Long profesionalId) { this.profesionalId = profesionalId; }
 }

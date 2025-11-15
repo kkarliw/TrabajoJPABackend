@@ -1,3 +1,4 @@
+
 package consultorio.modelo.profesionales;
 
 import jakarta.persistence.*;
@@ -24,17 +25,18 @@ public class ProfesionalSalud {
     @Column(nullable = false)
     private String especialidad;
 
-    // ✅ SIN @Enumerated - es un String
     @Column(nullable = false)
     private String tipoProfesional;
 
     @Column(nullable = false)
     private String email;
 
-    // ✅ CONSTRUCTOR VACÍO OBLIGATORIO
+    // ✅ NUEVO CAMPO
+    @Column(name = "usuario_id")
+    private Long usuarioId;
+
     public ProfesionalSalud() {}
 
-    // Constructor con parámetros
     public ProfesionalSalud(String nombre, String apellido, String telefono,
                             String numeroLicencia, String especialidad,
                             String tipoProfesional, String email) {
@@ -47,7 +49,6 @@ public class ProfesionalSalud {
         this.email = email;
     }
 
-    // Getters y Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -71,4 +72,9 @@ public class ProfesionalSalud {
 
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
+    // ✅ NUEVOS GETTERS Y SETTERS
+    public Long getUsuarioId() { return usuarioId; }
+    public void setUsuarioId(Long usuarioId) { this.usuarioId = usuarioId; }
 }
+

@@ -13,11 +13,11 @@
         <class>consultorio.modelo.profesionales.ProfesionalSalud</class>
         <class>consultorio.modelo.profesionales.Medico</class>
         <class>consultorio.modelo.profesionales.Especialista</class>
-
-        <!-- ✨ NUEVAS ENTIDADES -->
         <class>consultorio.modelo.SignosVitales</class>
         <class>consultorio.modelo.Vacuna</class>
         <class>consultorio.modelo.ReporteDiario</class>
+        <class>consultorio.modelo.HorarioMedico</class>
+        <class>consultorio.modelo.HorarioMedico</class>
 
         <properties>
             <property name="jakarta.persistence.jdbc.driver" value="com.mysql.cj.jdbc.Driver"/>
@@ -28,7 +28,7 @@
             <!-- Dialecto de MySQL -->
             <property name="hibernate.hbm2ddl.auto" value="update"/>
 
-            <!-- ⚠️ IMPORTANTE: Crear/actualizar tablas automáticamente -->
+            <!-- Crear/actualizar tablas automáticamente -->
             <property name="hibernate.hbm2ddl.auto" value="update"/>            <!-- Mostrar SQL en consola (útil para debug) -->
             <property name="hibernate.show_sql" value="true"/>
             <property name="hibernate.format_sql" value="true"/>

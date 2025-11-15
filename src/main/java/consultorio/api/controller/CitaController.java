@@ -51,6 +51,17 @@ public class CitaController {
                 res.type("application/json");
                 Long pacienteId = Long.parseLong(req.params(":pacienteId"));
                 List<Cita> citas = citaDAO.buscarPorPaciente(pacienteId);
+
+                // ✅ LIMPIAR colecciones lazy para evitar LazyInitializationException
+                citas.forEach(cita -> {
+                    if (cita.getPaciente() != null) {
+                        cita.getPaciente().setCitas(new ArrayList<>());
+                        cita.getPaciente().setSignosVitales(new ArrayList<>());
+                        cita.getPaciente().setVacunas(new ArrayList<>());
+                        cita.getPaciente().setHistoriasClinicas(new ArrayList<>());
+                    }
+                });
+
                 return gson.toJson(citas);
             });
 
@@ -58,23 +69,36 @@ public class CitaController {
                 res.type("application/json");
                 Long medicoId = Long.parseLong(req.params(":medicoId"));
                 List<Cita> citas = citaDAO.buscarPorMedico(medicoId);
+
+                // ✅ LIMPIAR colecciones lazy
+                citas.forEach(cita -> {
+                    if (cita.getPaciente() != null) {
+                        cita.getPaciente().setCitas(new ArrayList<>());
+                        cita.getPaciente().setSignosVitales(new ArrayList<>());
+                        cita.getPaciente().setVacunas(new ArrayList<>());
+                        cita.getPaciente().setHistoriasClinicas(new ArrayList<>());
+                    }
+                });
+
                 return gson.toJson(citas);
             });
 
-            // ============ CREAR CITA CON DEBUG ============
+            // ============ CREAR CITA ============
+
             post("", (req, res) -> {
                 res.type("application/json");
 
-                // 🎯 DEBUG
                 System.out.println("\n🎯 === CREANDO CITA ===");
                 System.out.println("BODY: " + req.body());
                 System.out.println("ROL: " + req.attribute("rol"));
 
                 String rol = req.attribute("rol");
 
-                if (rol == null || (!rol.equals("ADMIN") && !rol.equals("MEDICO") && !rol.equals("RECEPCIONISTA"))) {
+                // ✅ PERMITIR PACIENTE en la creación de citas
+                if (rol == null || (!rol.equals("ADMIN") && !rol.equals("MEDICO") &&
+                        !rol.equals("RECEPCIONISTA") && !rol.equals("PACIENTE"))) {
                     res.status(403);
-                    return gson.toJson(Map.of("error", "Acceso denegado: requiere rol ADMIN, MEDICO o RECEPCIONISTA"));
+                    return gson.toJson(Map.of("error", "Acceso denegado: requiere rol ADMIN, MEDICO, RECEPCIONISTA o PACIENTE"));
                 }
 
                 CitaInput input;
@@ -104,6 +128,14 @@ public class CitaController {
                     return gson.toJson(Map.of("error", "Debe especificar paciente y profesional"));
                 }
 
+                // ✅ VALIDACIÓN: PACIENTE solo puede agendar para sí mismo
+                Long userId = (Long) req.attribute("userId");
+                if (rol.equals("PACIENTE") && !input.pacienteId.equals(userId)) {
+                    System.out.println("❌ Paciente intentando agendar para otro paciente");
+                    res.status(403);
+                    return gson.toJson(Map.of("error", "Los pacientes solo pueden agendar citas para sí mismos"));
+                }
+
                 // Buscar entidades
                 Paciente p = pacienteDAO.buscarPorId(input.pacienteId);
                 ProfesionalSalud prof = profDAO.buscarPorId(Math.toIntExact(input.profesionalId));
@@ -120,16 +152,14 @@ public class CitaController {
                     return gson.toJson(Map.of("error", "Profesional no existe"));
                 }
 
-                // Parsear fecha - acepta YYYY-MM-DD o YYYY-MM-DDTHH:mm
+                // Parsear fecha
                 LocalDate fecha;
                 try {
                     if (input.fecha.contains("T")) {
-                        // Si viene con hora (datetime-local del HTML), extrae solo la fecha
                         String soloFecha = input.fecha.split("T")[0];
                         fecha = LocalDate.parse(soloFecha);
                         System.out.println("✅ Fecha parseada (de datetime): " + fecha);
                     } else {
-                        // Si viene sin hora (YYYY-MM-DD)
                         fecha = LocalDate.parse(input.fecha);
                         System.out.println("✅ Fecha parseada: " + fecha);
                     }
@@ -145,7 +175,6 @@ public class CitaController {
                 try {
                     citaDAO.crear(c);
 
-                    // ✅ LIMPIAR COLECCIONES LAZY
                     c.getPaciente().setCitas(new ArrayList<>());
                     c.getPaciente().setSignosVitales(new ArrayList<>());
                     c.getPaciente().setVacunas(new ArrayList<>());
